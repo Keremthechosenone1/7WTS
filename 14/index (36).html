@@ -1,0 +1,1769 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#1a1a1e">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="7 Words to Sentence">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>7 Words to Sentence 🎴</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<!-- QR Code -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<style>
+:root {
+  --wood-dark: #2d1005;
+  --wood-mid: #5c2d0a;
+  --felt: #1a4a1a;
+  --gold: #d4a017;
+  --gold-light: #f0c040;
+  --cream: #fdf6e3;
+  --tile-bg: #fdf0d0;
+  --red-t: #c0392b;
+  --blue-t: #1a5276;
+  --black-t: #1a1a1a;
+  --yellow-t: #7d6608;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: 'Crimson Text', Georgia, serif;
+  background: 
+    radial-gradient(ellipse at 20% 80%, rgba(101,67,33,0.4) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(139,90,43,0.3) 0%, transparent 50%),
+    linear-gradient(160deg, #0d0602 0%, #1a0a04 30%, #2a1208 60%, #1a0a04 100%);
+  min-height: 100vh;
+  color: var(--cream);
+  overflow-x: hidden;
+}
+
+#gameScreen {
+  background:
+    repeating-linear-gradient(92deg, transparent, transparent 2px, rgba(101,67,33,0.03) 2px, rgba(101,67,33,0.03) 4px),
+    repeating-linear-gradient(180deg, transparent, transparent 40px, rgba(0,0,0,0.04) 40px, rgba(0,0,0,0.04) 41px),
+    linear-gradient(160deg, #1a1a1e, #222228, #1a1a1e);
+}
+
+.screen { display: none; min-height: 100vh; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+.screen.active { display: flex; }
+
+#configBanner {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 999;
+  background: linear-gradient(90deg, #c0392b, #922b21);
+  color: white; text-align: center; padding: 10px 16px; font-size: 14px;
+  display: none;
+}
+#configBanner a { color: #f9e79f; font-weight: bold; }
+
+#menuScreen { background: radial-gradient(ellipse at 50% 20%, rgba(212,160,23,0.12) 0%, transparent 60%); }
+
+.brand { text-align: center; margin-bottom: 40px; }
+.brand-tiles { display: flex; gap: 5px; justify-content: center; margin-bottom: 16px; }
+.brand-tile {
+  width: 48px; height: 62px;
+  background: linear-gradient(145deg, #fdf0d0, #e8c878);
+  border: 2px solid var(--gold); border-radius: 6px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  animation: float 3s ease-in-out infinite;
+}
+.brand-tile:nth-child(2){animation-delay:.2s}.brand-tile:nth-child(3){animation-delay:.4s}.brand-tile:nth-child(4){animation-delay:.6s}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+.bt-word{font-family:'Playfair Display',serif;font-size:9px;font-weight:900;letter-spacing:.3px}
+.bt-word.r{color:var(--red-t)}.bt-word.b{color:var(--blue-t)}.bt-word.k{color:var(--black-t)}.bt-word.y{color:var(--yellow-t)}
+
+.title { font-family:'Playfair Display',serif; font-size: clamp(32px,8vw,60px); font-weight:900; color:var(--gold-light); text-shadow:0 0 30px rgba(212,160,23,.5); letter-spacing:4px; }
+.subtitle { font-size:12px; color:rgba(240,192,64,.6); letter-spacing:6px; text-transform:uppercase; margin-top:4px; }
+
+.card {
+  background: linear-gradient(145deg, rgba(212,160,23,.08), rgba(45,16,5,.9));
+  border: 1px solid rgba(212,160,23,.25); border-radius: 16px;
+  padding: 32px; width: min(420px, 95vw);
+  box-shadow: 0 20px 60px rgba(0,0,0,.6);
+}
+
+.card h2 { font-family:'Playfair Display',serif; color:var(--gold-light); font-size:20px; margin-bottom:24px; text-align:center; }
+
+.input-group { margin-bottom:14px; }
+.input-group label { display:block; color:rgba(240,192,64,.7); font-size:12px; letter-spacing:2px; text-transform:uppercase; margin-bottom:6px; }
+.input-group input, .input-group select {
+  width:100%; padding:12px 14px;
+  background:rgba(0,0,0,.4); border:1px solid rgba(212,160,23,.25);
+  border-radius:8px; color:var(--cream); font-family:'Crimson Text',serif; font-size:16px;
+  outline:none; transition:border-color .2s;
+}
+.input-group input:focus, .input-group select:focus { border-color:var(--gold); }
+.input-group input::placeholder { color:rgba(245,230,200,.3); }
+
+.divider { display:flex; align-items:center; gap:12px; margin:20px 0; }
+.divider::before,.divider::after { content:''; flex:1; height:1px; background:rgba(212,160,23,.2); }
+.divider span { color:rgba(240,192,64,.5); font-size:12px; letter-spacing:2px; }
+
+.btn { width:100%; padding:14px; border:none; border-radius:10px; font-family:'Playfair Display',serif; font-size:18px; font-weight:700; cursor:pointer; letter-spacing:1px; transition:all .15s; }
+.btn:active { transform:scale(.98); }
+.btn-gold { background:linear-gradient(135deg,#b8860b,#d4a017,#f0c040); color:#2d1005; box-shadow:0 4px 20px rgba(212,160,23,.4); margin-bottom:10px; }
+.btn-gold:hover { filter:brightness(1.1); transform:translateY(-1px); box-shadow:0 6px 28px rgba(212,160,23,.5); }
+.btn-outline { background:transparent; border:1px solid rgba(212,160,23,.3); color:rgba(240,192,64,.7); font-size:14px; padding:10px; }
+.btn-outline:hover { background:rgba(212,160,23,.1); color:var(--gold-light); }
+.btn-sm { width:auto; padding:8px 20px; font-size:14px; }
+.btn-red { background:linear-gradient(135deg,#922b21,#c0392b); color:white; }
+.btn-green { background:linear-gradient(135deg,#1a7a1a,#27ae60); color:white; }
+.btn-blue { background:linear-gradient(135deg,#1a5276,#2e86c1); color:white; }
+
+#lobbyScreen { background: radial-gradient(ellipse at 50% 30%, rgba(212,160,23,.1) 0%, transparent 60%); }
+
+.lobby-card { background:linear-gradient(145deg,rgba(212,160,23,.08),rgba(45,16,5,.9)); border:1px solid rgba(212,160,23,.25); border-radius:16px; padding:24px; width:min(500px,95vw); }
+
+.room-code-display { text-align:center; margin-bottom:20px; }
+.room-label { color:rgba(240,192,64,.6); font-size:11px; letter-spacing:3px; text-transform:uppercase; margin-bottom:6px; }
+.room-code { font-family:'Playfair Display',serif; font-size:48px; font-weight:900; color:var(--gold-light); letter-spacing:8px; text-shadow:0 0 20px rgba(212,160,23,.4); }
+
+#qrContainer { display:flex; justify-content:center; margin:16px 0; }
+#qrContainer canvas, #qrContainer img { border-radius:8px; border:3px solid rgba(212,160,23,.4); padding:8px; background:white; }
+
+.players-list { margin-bottom:20px; }
+.players-list h3 { color:var(--gold); font-size:14px; letter-spacing:2px; margin-bottom:10px; text-align:center; }
+.player-slot {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 14px; border-radius:8px; margin-bottom:6px;
+  background:rgba(0,0,0,.3); border:1px solid rgba(212,160,23,.1);
+  transition:all .3s;
+}
+.player-slot.filled { border-color:rgba(212,160,23,.3); background:rgba(212,160,23,.05); }
+.player-slot.me { border-color:var(--gold); }
+.slot-num { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
+.slot-name { flex:1; font-size:15px; }
+.slot-empty { color:rgba(245,230,200,.3); font-style:italic; font-size:14px; }
+.slot-badge { font-size:11px; color:var(--gold); background:rgba(212,160,23,.15); border:1px solid rgba(212,160,23,.3); border-radius:4px; padding:2px 8px; }
+.waiting-dots { display:inline-flex; gap:3px; }
+.wd { width:5px;height:5px;background:var(--gold);border-radius:50%;animation:aiDot 1s ease-in-out infinite; }
+.wd:nth-child(2){animation-delay:.2s}.wd:nth-child(3){animation-delay:.4s}
+@keyframes aiDot{0%,80%,100%{transform:scale(.5);opacity:.4}40%{transform:scale(1);opacity:1}}
+
+.lobby-status { text-align:center; color:rgba(240,192,64,.6); font-size:13px; margin-bottom:16px; font-style:italic; }
+
+#gameScreen { padding:0; justify-content:flex-start; }
+
+.topbar {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px;
+  background: linear-gradient(90deg, rgba(18,18,22,0.98), rgba(28,28,34,0.98), rgba(18,18,22,0.98));
+  border-bottom: 2px solid rgba(139,105,20,0.4);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.6);
+  width:100%; flex-shrink:0; position:sticky; top:0; z-index:10;
+}
+.topbar-title { font-family:'Playfair Display',serif; color:var(--gold-light); font-size:16px; letter-spacing:2px; }
+.turn-badge { font-family:'Playfair Display',serif; font-size:12px; color:var(--gold); background:rgba(212,160,23,.15); border:1px solid rgba(212,160,23,.3); border-radius:20px; padding:4px 12px; }
+
+.okey-layout {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  width: 100%;
+  height: calc(100vh - 44px);
+  overflow: hidden;
+  gap: 0;
+}
+
+.player-side {
+  background: rgba(0,0,0,0.35);
+  border: 1px solid rgba(212,160,23,0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 4px 8px;
+  position: relative;
+  flex-shrink: 0;
+}
+.player-side.north { 
+  border-bottom: 2px solid rgba(139,105,20,0.3);
+  min-height: 72px;
+}
+.player-side.west, .player-side.east {
+  flex-direction: column;
+  width: 68px;
+  min-width: 68px;
+  justify-content: center;
+  gap: 2px;
+  border-right: 2px solid rgba(139,105,20,0.2);
+}
+.player-side.east { border-right: none; border-left: 2px solid rgba(139,105,20,0.2); }
+
+.side-label {
+  font-family: 'Playfair Display', serif;
+  font-size: 10px;
+  color: var(--gold);
+  letter-spacing: 1px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 60px;
+  padding: 2px 4px;
+}
+.side-score { font-size: 9px; color: rgba(212,160,23,0.5); text-align:center; }
+.side-active { background: rgba(212,160,23,0.1) !important; border-color: rgba(212,160,23,0.5) !important; }
+.side-tiles-h { display:flex; flex-wrap:nowrap; gap:2px; overflow:hidden; align-items:center; }
+.side-tiles-v { display:flex; flex-direction:column; gap:2px; align-items:center; overflow:hidden; }
+
+.tile-back-sm {
+  width: 22px; height: 30px;
+  background: linear-gradient(145deg, #fdfaf0, #f0e4a8, #ddd090);
+  border-radius: 3px;
+  border: 1px solid #c8a830;
+  box-shadow: 1px 2px 3px rgba(0,0,0,0.4);
+  flex-shrink: 0;
+}
+
+.table-middle {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.okey-table {
+  flex: 1;
+  position: relative;
+  background:
+    radial-gradient(ellipse at 50% 40%, rgba(58,64,70,0.95) 0%, rgba(42,46,52,0.98) 50%, rgba(28,32,36,1) 100%);
+  border-radius: 24px;
+  border: 6px solid transparent;
+  background-clip: padding-box;
+  box-shadow:
+    0 0 0 6px #3d1f05,
+    0 0 0 10px #5c2d0a,
+    0 0 0 14px #8b4513,
+    0 0 0 18px #5c2d0a,
+    inset 0 2px 20px rgba(0,0,0,0.5),
+    0 20px 60px rgba(0,0,0,0.8);
+  padding: 14px;
+  margin: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.okey-table::before {
+  content: '';
+  position: absolute;
+  inset: -20px;
+  border-radius: 30px;
+  background: 
+    repeating-linear-gradient(45deg, #3d1f05, #3d1f05 3px, #5c2d0a 3px, #5c2d0a 6px, #4a2408 6px, #4a2408 9px);
+  z-index: -1;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+}
+
+.okey-table::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 18px;
+  background: 
+    repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.03) 3px, rgba(0,0,0,0.03) 4px),
+    repeating-linear-gradient(90deg, transparent, transparent 3px, rgba(0,0,0,0.02) 3px, rgba(0,0,0,0.02) 4px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.okey-table > * { position: relative; z-index: 1; }
+
+.table-ornament {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  border: 2px solid rgba(212,160,23,0.15);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 32px; opacity: 0.12;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.center-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.pool-tile {
+  background: linear-gradient(145deg, #fdfaf0, #f5e8b0) !important;
+  border: 1.5px solid #c8a830 !important;
+  box-shadow: 2px 3px 6px rgba(0,0,0,0.5) !important;
+}
+
+/* ── MY HAND (RACK) ── */
+.my-hand {
+  background: linear-gradient(180deg, #5a3008 0%, #3d1f05 40%, #2d1505 100%);
+  border-top: 4px solid #a07830;
+  border-left: 3px solid #7a5210;
+  border-right: 3px solid #7a5210;
+  border-bottom: 5px solid #2a1005;
+  border-radius: 6px 6px 10px 10px;
+  padding: 0;
+  flex-shrink: 0;
+  box-shadow: 0 -6px 20px rgba(0,0,0,.6), inset 0 2px 6px rgba(255,200,80,.1);
+  position: relative;
+  overflow: hidden;
+}
+.my-hand::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, transparent 5%, #d4a017 20%, #f0c040 50%, #d4a017 80%, transparent 95%);
+}
+.mh-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 3px 10px 3px;
+  background: linear-gradient(180deg, rgba(0,0,0,.4) 0%, transparent 100%);
+  border-bottom: 1px solid rgba(212,160,23,.15);
+}
+.mh-label { font-family:'Playfair Display',serif; color:var(--gold); font-size:12px; letter-spacing:1px; }
+.mh-score { margin-left:auto; color:var(--gold); font-size:12px; }
+.mh-hint-btn {
+  background: rgba(212,160,23,.15); border: 1px solid rgba(212,160,23,.3);
+  color: var(--gold); border-radius: 5px; padding: 2px 8px;
+  font-size: 11px; cursor: pointer; font-family:'Playfair Display',serif;
+  transition: all .15s; white-space: nowrap;
+}
+.mh-hint-btn:hover { background: rgba(212,160,23,.3); }
+
+/* ── RACK ROWS ── */
+.rack-rows { padding: 2px 4px 4px; display: flex; flex-direction: column; gap: 3px; align-items: stretch; }
+.rack-row {
+  display: flex; gap: 0; align-items: flex-end;
+  background: linear-gradient(180deg, #7a5218 0%, #5a3a0a 40%, #4a2a06 100%);
+  border-radius: 6px; padding: 3px 4px 5px;
+  border-top: 2px solid #a07830;
+  border-bottom: 5px solid #2a1205;
+  border-left: 2px solid #7a5210;
+  border-right: 2px solid #7a5210;
+  box-shadow: inset 0 3px 8px rgba(0,0,0,.5), 0 3px 8px rgba(0,0,0,.4);
+  flex-wrap: nowrap; overflow-x: auto;
+  position: relative;
+  justify-content: flex-start;
+}
+.rack-row::after {
+  content:''; position:absolute; bottom:0; left:0; right:0; height:5px;
+  background: linear-gradient(90deg, #2a1205, #3d1f08, #5c2d0a, #3d1f08, #2a1205);
+  border-radius: 0 0 4px 4px;
+}
+.rack-row::-webkit-scrollbar { height: 3px; }
+.rack-row::-webkit-scrollbar-thumb { background: rgba(212,160,23,.3); border-radius: 2px; }
+
+/* ── RACK SLOT — FİX: daha küçük, 7 taş sığsın ── */
+.rack-slot {
+  width: 58px; min-width: 58px; height: 76px;
+  border-radius: 6px;
+  border: 1.5px dashed rgba(212,160,23,0.18);
+  background: rgba(0,0,0,0.18);
+  flex-shrink: 0;
+  margin: 0 1px;
+  transition: border-color .15s, background .15s;
+  box-sizing: border-box;
+  position: relative;
+}
+.rack-slot.drag-over {
+  border-color: rgba(212,160,23,0.7) !important;
+  background: rgba(212,160,23,0.12) !important;
+  box-shadow: 0 0 10px rgba(212,160,23,0.3);
+}
+.rack-slot .tile {
+  margin: 0; width: 56px; height: 74px;
+  border-radius: 6px;
+  position: absolute; top:1px; left:1px;
+}
+
+/* ── TILES ── */
+.tile {
+  width: 56px; height: 74px;
+  background: #ffffff;
+  border: 1.5px solid #8b1422;
+  border-radius: 8px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  cursor:pointer; flex-shrink:0;
+  box-shadow: 2px 5px 10px rgba(0,0,0,0.45), inset 0 1px 3px rgba(255,255,255,1);
+  transition: transform .15s, box-shadow .15s;
+  position: relative;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+.tile::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 5px;
+  background: #8b1422;
+  border-radius: 5px 5px 0 0;
+}
+.tile::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 5px;
+  background: #8b1422;
+  border-radius: 0 0 5px 5px;
+}
+.tile:hover { transform:translateY(-3px); box-shadow:2px 8px 16px rgba(0,0,0,.5); }
+.tile.drag-over { border-color: #d4a017 !important; box-shadow: 0 0 12px rgba(212,160,23,0.6) !important; transform: scale(1.05); }
+.tile.selected { transform:translateY(-10px); box-shadow:0 12px 24px rgba(139,20,34,.5); border-color:#8b1422; }
+.tile.joker-tile { background:#8b1422 !important; border-color:#5a0010 !important; }
+.tile.joker-tile::before, .tile.joker-tile::after { background:#5a0010 !important; }
+.tile-w { font-size:10px; font-weight:900; text-align:center; line-height:1.1; padding:0 3px; letter-spacing:0.2px; font-family:'Playfair Display',serif; word-break:break-word; overflow-wrap:break-word; color:#8b1422; position:relative; z-index:1; }
+.tile-t { font-size:8px; font-weight:700; color:#333; text-align:center; padding:1px 2px 0; font-style:normal; font-family:'Crimson Text',serif; position:relative; z-index:1; letter-spacing:0.1px; }
+.tile.joker-tile .tile-w { color:white !important; }
+.tile.joker-tile .tile-t { color:rgba(255,255,255,0.85) !important; }
+.tile.in-sentence { opacity:0.35; transform:translateY(4px); box-shadow:none; cursor:default; border-style:dashed; }
+.tile-w.len-8  { font-size:8px; }
+.tile-w.len-9  { font-size:7px; letter-spacing:-0.3px; }
+.tile-w.len-10 { font-size:6.5px; letter-spacing:-0.5px; }
+.tile-w.len-11 { font-size:6px; letter-spacing:-0.8px; }
+.tile-w.len-12 { font-size:6.5px; letter-spacing:-1px; }
+
+/* Sentence zone */
+.sentence-zone {
+  background: linear-gradient(135deg, rgba(36,42,48,0.75), rgba(24,28,34,0.85));
+  border: 2px solid rgba(212,160,23,0.25);
+  border-radius: 12px; padding: 10px;
+  box-shadow: inset 0 2px 10px rgba(0,0,0,0.3), 0 2px 8px rgba(0,0,0,0.3);
+  flex-shrink: 0;
+}
+.sz-label { color:rgba(150,255,150,.6); font-size:10px; letter-spacing:3px; text-transform:uppercase; text-align:center; margin-bottom:6px; }
+.sz-tiles { display:flex; flex-wrap:wrap; gap:4px; min-height:52px; align-items:center; justify-content:center; }
+.sz-hint { color:rgba(150,255,150,.4); font-size:12px; font-style:italic; letter-spacing:.5px; }
+.tile.dragging { opacity:0.4; transform:scale(0.95); }
+.sz-tiles.drag-active { background:rgba(212,160,23,.1); border:2px dashed rgba(212,160,23,.5); border-radius:8px; }
+.sz-result { text-align:center; padding:5px 8px; border-radius:6px; font-family:'Playfair Display',serif; font-size:12px; margin-top:4px; }
+.sz-result.valid { background:rgba(40,167,69,.2); border:1px solid rgba(40,167,69,.4); color:#5eff8a; }
+.sz-result.invalid { background:rgba(220,53,69,.2); border:1px solid rgba(220,53,69,.4); color:#ff6b7a; }
+
+/* Pool & actions */
+.pool-stack { position:relative; width:46px; height:58px; cursor:pointer; flex-shrink:0; }
+.pool-stack .tile { position:absolute; }
+.pool-count { color:var(--gold); font-size:12px; flex-shrink:0; }
+.discard-area { flex:1; display:flex; gap:3px; overflow:hidden; align-items:center; }
+.action-col { display:flex; flex-direction:column; gap:5px; flex-shrink:0; }
+
+/* Suggest panel */
+.suggest-panel {
+  background: rgba(0,0,0,.5); border: 1px solid rgba(212,160,23,.2);
+  border-radius: 8px; padding: 8px 10px; margin: 4px 6px 0;
+  display: none;
+}
+.suggest-panel.open { display: block; }
+.suggest-list { display: flex; flex-direction: column; gap: 4px; max-height: 120px; overflow-y: auto; }
+.suggest-item {
+  background: rgba(212,160,23,.07); border: 1px solid rgba(212,160,23,.2);
+  border-radius: 6px; padding: 5px 10px; cursor: pointer;
+  font-family:'Playfair Display',serif; font-size:12px; color: var(--gold-light);
+  transition: all .15s; display: flex; justify-content: space-between; align-items: center;
+}
+.suggest-item:hover { background: rgba(212,160,23,.2); border-color: var(--gold); }
+.suggest-item .si-tr { font-size:11px; color:rgba(245,230,200,.5); font-style:italic; }
+.suggest-best { background: rgba(40,167,69,.15); border-color: rgba(40,167,69,.4); color: #5eff8a; }
+
+/* Log */
+.game-log { background:rgba(0,0,0,.4); border:1px solid rgba(255,255,255,.05); border-radius:8px; padding:6px 10px; max-height:60px; overflow-y:auto; scrollbar-width:thin; }
+.log-e { color:rgba(245,230,200,.55); font-size:11px; line-height:1.6; }
+.log-e.hi { color:var(--gold-light); font-weight:600; font-style:normal; }
+
+/* Action buttons */
+.abtn { padding:7px 12px; border-radius:7px; border:none; cursor:pointer; font-family:'Playfair Display',serif; font-size:12px; font-weight:700; transition:all .15s; white-space:nowrap; }
+.abtn:disabled { opacity:.35; cursor:not-allowed; }
+.abtn-draw { background:linear-gradient(135deg,#1a5276,#2e86c1); color:white; }
+.abtn-play { background:linear-gradient(135deg,#1a7a1a,#27ae60); color:white; }
+.abtn-discard { background:linear-gradient(135deg,#7d1f1f,#c0392b); color:white; }
+
+/* Tile back */
+.tile-back {
+  width:32px; height:42px;
+  background: linear-gradient(145deg, #fdfaf0, #f0e4a8, #ddd090);
+  border-radius: 5px;
+  border: 1.5px solid #c8a830;
+  flex-shrink: 0;
+  box-shadow: 2px 3px 6px rgba(0,0,0,0.5), inset 0 1px 2px rgba(255,255,255,0.8);
+  position: relative;
+}
+.tile-back::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 3px;
+  border: 1px solid rgba(180,140,20,0.3);
+  background: repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(180,140,20,0.08) 4px, rgba(180,140,20,0.08) 5px);
+}
+
+/* Win screen */
+#winScreen { text-align:center; }
+.win-emoji { font-size:70px; margin-bottom:16px; animation:bounce 1s ease-in-out infinite alternate; }
+@keyframes bounce { from{transform:scale(1)rotate(-5deg)} to{transform:scale(1.1)rotate(5deg)} }
+.win-title { font-family:'Playfair Display',serif; font-size:clamp(32px,8vw,52px); color:var(--gold-light); text-shadow:0 0 30px rgba(212,160,23,.7); margin-bottom:8px; }
+.win-player { font-size:22px; margin-bottom:6px; }
+.win-sentence { background:rgba(212,160,23,.1); border:1px solid rgba(212,160,23,.4); border-radius:10px; padding:14px 20px; font-size:18px; color:var(--gold); font-family:'Playfair Display',serif; font-style:italic; margin:16px 0; max-width:460px; }
+.win-tr { color:rgba(245,230,200,.6); font-size:14px; margin-bottom:20px; }
+.scores-tbl { background:rgba(0,0,0,.4); border:1px solid rgba(212,160,23,.2); border-radius:10px; padding:16px; width:min(380px,90vw); margin-bottom:24px; }
+.sc-row { display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px solid rgba(255,255,255,.05); font-size:15px; }
+.sc-row:last-child{border-bottom:none}
+.sc-name{color:var(--gold-light)}
+
+/* Drag */
+.tile.dragging { opacity: 0.4; transform: scale(0.95); cursor: grabbing; }
+.tile[draggable="true"] { cursor: grab; }
+
+/* Toast */
+.toast { position:fixed; top:16px; left:50%; transform:translateX(-50%) translateY(-120px); background:rgba(20,8,0,.97); border:1px solid rgba(212,160,23,.5); border-radius:10px; padding:10px 20px; color:var(--gold-light); font-family:'Playfair Display',serif; font-size:14px; z-index:300; transition:transform .4s; max-width:90vw; text-align:center; pointer-events:none; }
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+/* Timer */
+.timer-bar-wrap { width:100%; height:6px; background:rgba(255,255,255,.1); border-radius:3px; overflow:hidden; margin-bottom:6px; }
+.timer-bar { height:100%; border-radius:3px; background:linear-gradient(90deg,#27ae60,#f0c040,#c0392b); transition:width 1s linear; }
+.timer-display { font-family:'Playfair Display',serif; font-size:22px; font-weight:900; color:var(--gold-light); min-width:36px; text-align:center; }
+.timer-display.urgent { color:#e74c3c; animation:timerPulse .5s ease-in-out infinite alternate; }
+@keyframes timerPulse { from{transform:scale(1)} to{transform:scale(1.15)} }
+.topbar-timer { display:flex; align-items:center; gap:8px; }
+
+/* Room settings */
+.room-settings-modal { position:fixed; inset:0; background:rgba(0,0,0,.9); z-index:9999; display:none; align-items:flex-start; justify-content:center; padding:20px; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+.room-settings-modal.active { display:flex; }
+.rs-box { background:linear-gradient(145deg,#3d1f0a,#2d0f05); border:1px solid rgba(212,160,23,.4); border-radius:16px; padding:24px; max-width:500px; width:100%; overflow-y:auto; margin:auto; max-height:90vh; }
+.rs-box h2 { font-family:'Playfair Display',serif; color:var(--gold-light); font-size:22px; margin-bottom:20px; text-align:center; }
+.rs-section { margin-bottom:20px; }
+.rs-section h3 { color:var(--gold); font-size:13px; letter-spacing:2px; text-transform:uppercase; margin-bottom:10px; }
+.player-count-btns { display:flex; gap:8px; flex-wrap:wrap; }
+.pc-btn { width:48px; height:48px; border-radius:10px; border:2px solid rgba(212,160,23,.3); background:rgba(0,0,0,.4); color:rgba(245,230,200,.6); font-family:'Playfair Display',serif; font-size:18px; font-weight:700; cursor:pointer; transition:all .15s; display:flex; align-items:center; justify-content:center; }
+.pc-btn:hover { border-color:var(--gold); color:var(--gold); }
+.pc-btn.active { background:rgba(212,160,23,.2); border-color:var(--gold-light); color:var(--gold-light); box-shadow:0 0 12px rgba(212,160,23,.3); }
+.ai-slots { display:flex; flex-direction:column; gap:8px; }
+.ai-slot { display:flex; align-items:center; gap:10px; padding:8px 12px; background:rgba(0,0,0,.3); border:1px solid rgba(212,160,23,.15); border-radius:8px; }
+.ai-slot-num { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
+.ai-slot-label { flex:1; font-size:14px; color:var(--cream); }
+.ai-toggle { position:relative; width:44px; height:24px; flex-shrink:0; }
+.ai-toggle input { opacity:0; width:0; height:0; }
+.ai-toggle-slider { position:absolute; inset:0; background:rgba(255,255,255,.1); border-radius:12px; cursor:pointer; transition:.3s; border:1px solid rgba(212,160,23,.2); }
+.ai-toggle-slider::before { content:''; position:absolute; width:18px; height:18px; left:2px; top:2px; background:#888; border-radius:50%; transition:.3s; }
+.ai-toggle input:checked + .ai-toggle-slider { background:rgba(39,174,96,.3); border-color:rgba(39,174,96,.5); }
+.ai-toggle input:checked + .ai-toggle-slider::before { transform:translateX(20px); background:#27ae60; }
+.ai-name-input { background:rgba(0,0,0,.4); border:1px solid rgba(212,160,23,.2); border-radius:6px; padding:4px 8px; color:var(--cream); font-size:13px; width:100px; outline:none; font-family:'Crimson Text',serif; }
+.theme-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+.theme-btn { padding:10px 6px; border-radius:10px; border:2px solid transparent; cursor:pointer; text-align:center; transition:all .2s; font-family:'Playfair Display',serif; font-size:11px; font-weight:700; letter-spacing:.5px; }
+.theme-btn:hover { transform:translateY(-2px); }
+.theme-btn.active { border-color:white; box-shadow:0 0 16px rgba(255,255,255,.3); transform:translateY(-2px); }
+.theme-preview { width:100%; height:36px; border-radius:6px; margin-bottom:6px; }
+.lobby-settings-row { display:flex; align-items:center; gap:8px; margin-bottom:12px; flex-wrap:wrap; justify-content:center; }
+.settings-chip { background:rgba(212,160,23,.1); border:1px solid rgba(212,160,23,.3); border-radius:20px; padding:4px 12px; color:var(--gold); font-size:12px; font-family:'Playfair Display',serif; }
+
+/* Setup modal */
+.setup-modal { position:fixed; inset:0; background:rgba(0,0,0,.85); z-index:200; display:none; align-items:center; justify-content:center; padding:20px; }
+.setup-modal.active { display:flex; }
+.setup-box { background:linear-gradient(145deg,#3d1f0a,#2d0f05); border:1px solid rgba(212,160,23,.4); border-radius:16px; padding:28px; max-width:480px; width:100%; max-height:90vh; overflow-y:auto; }
+.setup-box h2 { font-family:'Playfair Display',serif; color:var(--gold-light); font-size:22px; margin-bottom:6px; }
+.setup-box p { color:rgba(245,230,200,.7); font-size:14px; line-height:1.7; margin-bottom:14px; }
+.setup-box code { background:rgba(0,0,0,.5); border:1px solid rgba(212,160,23,.3); border-radius:4px; padding:2px 8px; color:var(--gold); font-size:13px; }
+.setup-box ol { padding-left:20px; color:rgba(245,230,200,.8); font-size:14px; line-height:2; }
+.copy-field { display:flex; gap:8px; margin:10px 0; }
+.copy-field input { flex:1; background:rgba(0,0,0,.5); border:1px solid rgba(212,160,23,.3); border-radius:6px; padding:8px 12px; color:var(--gold); font-size:12px; outline:none; font-family:monospace; }
+.copy-btn { padding:8px 14px; background:rgba(212,160,23,.2); border:1px solid rgba(212,160,23,.4); color:var(--gold); border-radius:6px; cursor:pointer; font-size:12px; white-space:nowrap; }
+
+/* Library */
+#libraryScreen { background: radial-gradient(ellipse at 50% 20%, rgba(212,160,23,0.08) 0%, transparent 60%); padding:16px; }
+.lib-header { text-align:center; margin-bottom:20px; }
+.lib-title { font-family:'Playfair Display',serif; font-size:28px; font-weight:900; color:var(--gold-light); letter-spacing:3px; }
+.lib-subtitle { font-size:12px; color:rgba(240,192,64,.5); letter-spacing:4px; margin-top:4px; }
+.lib-search-row { display:flex; gap:8px; margin-bottom:16px; max-width:700px; width:100%; }
+.lib-search { flex:1; padding:10px 14px; background:rgba(0,0,0,.4); border:1px solid rgba(212,160,23,.3); border-radius:8px; color:var(--cream); font-size:16px; font-family:'Crimson Text',serif; outline:none; }
+.lib-search:focus { border-color:var(--gold); }
+.lib-filter-btns { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; max-width:700px; width:100%; }
+.lib-filter { padding:6px 14px; border-radius:20px; border:1px solid rgba(212,160,23,.25); background:transparent; color:rgba(240,192,64,.6); font-size:12px; cursor:pointer; font-family:'Playfair Display',serif; letter-spacing:1px; transition:all .15s; }
+.lib-filter.active { background:rgba(212,160,23,.2); border-color:var(--gold); color:var(--gold-light); }
+.lib-filter.r { border-color:rgba(192,57,43,.4); color:rgba(192,57,43,.8); }
+.lib-filter.r.active { background:rgba(192,57,43,.2); border-color:#c0392b; color:#e74c3c; }
+.lib-filter.b { border-color:rgba(26,82,118,.4); color:rgba(41,128,185,.8); }
+.lib-filter.b.active { background:rgba(26,82,118,.2); border-color:#1a5276; color:#3498db; }
+.lib-filter.k { border-color:rgba(50,50,50,.5); color:rgba(180,180,180,.8); }
+.lib-filter.k.active { background:rgba(50,50,50,.3); border-color:#888; color:#ddd; }
+.lib-filter.y { border-color:rgba(125,102,8,.4); color:rgba(180,150,20,.8); }
+.lib-filter.y.active { background:rgba(125,102,8,.2); border-color:#7d6608; color:#d4ac0d; }
+.lib-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:12px; max-width:900px; width:100%; padding-bottom:20px; }
+.lib-card { background:linear-gradient(145deg,rgba(212,160,23,.06),rgba(30,12,4,.9)); border:1px solid rgba(212,160,23,.2); border-radius:12px; padding:14px; cursor:pointer; transition:all .2s; position:relative; }
+.lib-card:hover { border-color:rgba(212,160,23,.5); transform:translateY(-3px); box-shadow:0 8px 24px rgba(0,0,0,.4); }
+.lib-card.fav { border-color:rgba(231,76,60,.4); }
+.lib-card.fav::after { content:'♥'; position:absolute; top:8px; right:10px; color:#e74c3c; font-size:14px; }
+.lc-word { font-family:'Playfair Display',serif; font-size:20px; font-weight:900; margin-bottom:4px; }
+.lc-word.r{color:var(--red-t)}.lc-word.b{color:var(--blue-t)}.lc-word.k{color:#ccc}.lc-word.y{color:var(--gold)}
+.lc-tr { font-size:15px; color:var(--cream); margin-bottom:6px; font-style:italic; }
+.lc-type { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:rgba(240,192,64,.4); margin-bottom:8px; }
+.lc-stats { font-size:11px; color:rgba(240,192,64,.5); }
+.word-modal { position:fixed; inset:0; background:rgba(0,0,0,.88); z-index:250; display:none; align-items:center; justify-content:center; padding:16px; }
+.word-modal.active { display:flex; }
+.word-box { background:linear-gradient(145deg,#3d1f0a,#2d0f05); border:1px solid rgba(212,160,23,.4); border-radius:16px; padding:24px; max-width:480px; width:100%; max-height:88vh; overflow-y:auto; }
+.wb-word { font-family:'Playfair Display',serif; font-size:36px; font-weight:900; text-align:center; margin-bottom:4px; }
+.wb-word.r{color:var(--red-t)}.wb-word.b{color:var(--blue-t)}.wb-word.k{color:#ccc}.wb-word.y{color:var(--gold)}
+.wb-tr { font-size:22px; text-align:center; color:var(--cream); margin-bottom:4px; font-style:italic; }
+.wb-type-badge { text-align:center; margin-bottom:16px; }
+.wb-badge { display:inline-block; padding:3px 12px; border-radius:20px; font-size:11px; letter-spacing:2px; text-transform:uppercase; font-family:'Playfair Display',serif; }
+.wb-badge.r { background:rgba(192,57,43,.2); border:1px solid rgba(192,57,43,.4); color:#e74c3c; }
+.wb-badge.b { background:rgba(26,82,118,.2); border:1px solid rgba(26,82,118,.4); color:#3498db; }
+.wb-badge.k { background:rgba(80,80,80,.2); border:1px solid rgba(150,150,150,.3); color:#ccc; }
+.wb-badge.y { background:rgba(212,160,23,.15); border:1px solid rgba(212,160,23,.3); color:var(--gold); }
+.wb-section { margin-bottom:16px; }
+.wb-section h3 { font-size:11px; letter-spacing:2px; text-transform:uppercase; color:rgba(240,192,64,.5); margin-bottom:10px; border-bottom:1px solid rgba(212,160,23,.1); padding-bottom:6px; }
+.wb-example { background:rgba(0,0,0,.3); border-left:3px solid rgba(212,160,23,.3); border-radius:0 6px 6px 0; padding:10px 12px; margin-bottom:8px; }
+.wb-ex-en { font-family:'Playfair Display',serif; font-size:14px; color:var(--gold-light); margin-bottom:3px; }
+.wb-ex-tr { font-size:13px; color:rgba(245,230,200,.6); font-style:italic; }
+.wb-fav-btn { width:100%; padding:12px; border:2px solid rgba(231,76,60,.4); border-radius:10px; background:transparent; color:rgba(231,76,60,.8); font-family:'Playfair Display',serif; font-size:16px; cursor:pointer; transition:all .2s; margin-bottom:8px; }
+.wb-fav-btn.active { background:rgba(231,76,60,.2); border-color:#e74c3c; color:#ff6b6b; }
+.wb-stat { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid rgba(255,255,255,.05); font-size:13px; }
+.wb-stat:last-child { border-bottom:none; }
+.wb-stat-label { color:rgba(245,230,200,.5); }
+.wb-stat-val { color:var(--gold); font-family:'Playfair Display',serif; font-weight:700; }
+
+/* Tutorial */
+.tut-card { display:flex; gap:12px; background:rgba(0,0,0,.3); border:1px solid rgba(212,160,23,.15); border-radius:12px; padding:14px; margin-bottom:10px; }
+.tut-num { width:28px; height:28px; border-radius:50%; background:linear-gradient(135deg,#b8860b,#d4a017); color:#2d1005; font-family:'Playfair Display',serif; font-weight:900; font-size:14px; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:2px; }
+.tut-body { flex:1; }
+.tut-title { font-family:'Playfair Display',serif; color:var(--gold-light); font-size:15px; font-weight:700; margin-bottom:6px; }
+.tut-text { color:rgba(245,230,200,.75); font-size:13px; line-height:1.7; }
+.tut-ex { background:rgba(255,255,255,.04); border-left:3px solid rgba(212,160,23,.3); padding:4px 8px; margin:3px 0; border-radius:0 4px 4px 0; font-size:12px; }
+
+/* Mobile */
+body { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+html, body { overscroll-behavior: none; height: 100%; width: 100%; }
+
+@media(max-width:600px){
+  .btn { min-height: 48px; font-size: 15px; }
+  .abtn { min-height: 44px; padding: 10px 14px; font-size: 13px; }
+  .player-side.west, .player-side.east { width: 40px; min-width: 40px; }
+  .tile-back-sm { width: 14px; height: 20px; }
+  /* rack slot mobilde biraz daha küçük */
+  .rack-slot { width: 50px; min-width: 50px; height: 66px; }
+  .rack-slot .tile { width: 48px; height: 64px; }
+  .tile { width: 48px; height: 64px; }
+  .tile-w { font-size: 8px; }
+  .tile-t { font-size: 6.5px; }
+}
+
+@media(max-height: 500px) and (orientation: landscape) {
+  .rack-slot { width: 44px; min-width: 44px; height: 58px; }
+  .tile { width: 42px; height: 56px; }
+}
+
+.tile:active { transform: scale(0.95); }
+.btn:active { transform: scale(0.97); }
+.abtn:active { transform: scale(0.96); }
+input, select, textarea { font-size: 16px !important; }
+</style>
+</head>
+<body>
+
+<div id="configBanner">
+  ⚠️ Firebase henüz ayarlanmadı! <a href="#" onclick="showSetup()">Buraya tıkla →</a>
+</div>
+
+<!-- MENU -->
+<div id="menuScreen" class="screen active">
+  <div class="brand">
+    <div class="brand-tiles">
+      <div class="brand-tile"><span class="bt-word r">THE</span></div>
+      <div class="brand-tile"><span class="bt-word b">CAT</span></div>
+      <div class="brand-tile"><span class="bt-word k">IS</span></div>
+      <div class="brand-tile"><span class="bt-word y">BIG</span></div>
+    </div>
+    <div class="title" style="font-size:clamp(28px,6vw,56px);letter-spacing:2px;">7 WORDS TO SENTENCE</div>
+    <div class="subtitle">Online Multiplayer</div>
+  </div>
+  <div class="card">
+    <h2>🎮 Join Game</h2>
+    <div class="input-group">
+      <label>Name</label>
+      <input type="text" id="playerName" placeholder="Enter your name..." maxlength="20">
+    </div>
+    <button class="btn btn-gold" onclick="showRoomSettings()">🎴 Create New Room</button>
+    <div class="divider"><span>or</span></div>
+    <div class="input-group">
+      <label>Room Code</label>
+      <input type="text" id="roomCodeInput" placeholder="4-digit code..." maxlength="4" style="text-transform:uppercase;letter-spacing:4px;font-size:22px;text-align:center;">
+    </div>
+    <button class="btn btn-outline" onclick="joinRoom()">🚪 Join Room</button>
+    <div style="margin-top:10px;">
+      <button class="btn btn-outline" onclick="showLibrary()" style="background:rgba(212,160,23,.07);border-color:rgba(212,160,23,.4);color:var(--gold-light);font-size:15px;padding:12px;">📚 Word Library</button>
+    </div>
+    <div style="margin-top:8px;display:flex;gap:8px;justify-content:center;">
+      <button class="btn btn-outline" style="flex:1;font-size:13px;padding:10px;" onclick="showTutorial()">📖 How to Play?</button>
+      <button class="btn btn-outline" style="width:auto;padding:10px 14px;font-size:13px;" onclick="showRoomSettings()">⚙️</button>
+    </div>
+  </div>
+</div>
+
+<!-- LOBBY -->
+<div id="lobbyScreen" class="screen">
+  <div class="lobby-card">
+    <div class="room-code-display">
+      <div class="room-label">Room Code</div>
+      <div class="room-code" id="displayRoomCode">----</div>
+    </div>
+    <div id="qrContainer"></div>
+    <div style="text-align:center;color:rgba(240,192,64,.5);font-size:11px;margin-bottom:16px;letter-spacing:1px;">Scan QR or share the code</div>
+    <div class="players-list">
+      <div class="lobby-settings-row"><span class="settings-chip" id="settingsChipCount">👥 4 Players</span><span class="settings-chip" id="settingsChipTheme">🎨 Classic</span><span class="settings-chip" id="settingsChipAI">🤖 No AI</span></div>
+      <h3>👥 PLAYERS (waiting for <span id="lobbyWaitCount">4</span>)</h3>
+      <div id="playerSlots"></div>
+    </div>
+    <div class="lobby-status" id="lobbyStatus">
+      <span class="waiting-dots"><span class="wd"></span><span class="wd"></span><span class="wd"></span></span> Waiting...
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <button class="btn btn-gold" id="startBtn" onclick="hostStartGame()" disabled style="flex:1;">🚀 Start Game</button>
+      <button class="btn btn-outline" id="lobbySettingsBtn" onclick="showRoomSettings()" style="width:auto;padding:14px 16px;font-size:18px;">⚙️</button>
+    </div>
+    <button class="btn btn-outline" onclick="leaveRoom()">← Exit</button>
+  </div>
+</div>
+
+<!-- GAME -->
+<div id="gameScreen" class="screen">
+  <div class="topbar">
+    <div class="topbar-title">🎴 7 Words to Sentence</div>
+    <div class="turn-badge" id="turnBadge">Loading...</div>
+    <div class="topbar-timer" id="topbarTimer" style="display:none;">
+      <div class="timer-bar-wrap" style="width:70px;"><div class="timer-bar" id="timerBar"></div></div>
+      <div class="timer-display" id="timerDisplay">--</div>
+    </div>
+    <button onclick="leaveRoom()" style="padding:4px 10px;font-size:11px;border-radius:6px;background:transparent;border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.5);cursor:pointer;">← Exit</button>
+  </div>
+
+  <div class="okey-layout">
+    <div class="player-side north" id="sideNorth"></div>
+    <div class="table-middle">
+      <div class="player-side west" id="sideWest"></div>
+      <div class="okey-table">
+        <div class="table-ornament">☕</div>
+        <div class="sentence-zone">
+          <div class="sz-label">✨ Sentence Area ✨</div>
+          <div class="sz-tiles" id="szTiles"><div class="sz-hint">Click a tile → build sentence → Play!</div></div>
+          <div id="szResult"></div>
+        </div>
+        <div class="center-controls">
+          <div class="pool-stack" id="poolStack" onclick="drawFromPool()">
+            <div class="tile pool-tile" style="position:absolute;top:6px;left:6px;"></div>
+            <div class="tile pool-tile" style="position:absolute;top:3px;left:3px;"></div>
+            <div class="tile pool-tile" style="position:absolute;top:0;left:0;"></div>
+          </div>
+          <div class="pool-count" id="poolCount">📦</div>
+          <div class="discard-area" id="discardArea"></div>
+          <div class="action-col">
+            <button class="abtn abtn-draw" id="btnDraw" onclick="drawFromPool()">🎴 Draw</button>
+            <button class="abtn abtn-play" id="btnPlay" onclick="playSentence()">✅ Play</button>
+            <button class="abtn abtn-discard" id="btnDiscard" onclick="discardSelected()">🗑 Discard</button>
+          </div>
+        </div>
+        <div class="game-log" id="gameLog"><div class="log-e">Game started!</div></div>
+      </div>
+      <div class="player-side east" id="sideEast"></div>
+    </div>
+
+    <div class="my-hand">
+      <div class="mh-header">
+        <div class="mh-label" id="myHandLabel">🃏 My Hand</div>
+        <button class="mh-hint-btn" onclick="suggestBest()">⚡ Best</button>
+        <button class="mh-hint-btn" onclick="toggleSuggest()">💡 Hints</button>
+        <div class="mh-score" id="myScore" style="display:none;"></div>
+      </div>
+      <div class="suggest-panel" id="suggestPanel" style="display:none;">
+        <div style="font-size:10px;color:rgba(212,160,23,.6);letter-spacing:2px;margin-bottom:4px;">— POSSIBLE SENTENCES —</div>
+        <div class="suggest-list" id="suggestList"></div>
+      </div>
+      <div class="rack-rows" id="rackRows"></div>
+    </div>
+  </div>
+</div>
+
+<!-- WIN -->
+<div id="winScreen" class="screen">
+  <div class="win-emoji">🏆</div>
+  <div class="win-title">WINS!!</div>
+  <div class="win-player" id="winPlayer"></div>
+  <div class="win-sentence" id="winSentence"></div>
+  <div class="win-tr" id="winTr"></div>
+  <div class="scores-tbl" id="scoresTbl"></div>
+  <button class="btn btn-gold" style="width:min(320px,90vw);" onclick="backToMenu()">🔄 Play Again</button>
+</div>
+
+<!-- ROOM SETTINGS -->
+<div class="room-settings-modal" id="roomSettingsModal">
+  <div class="rs-box">
+    <h2>⚙️ Room Settings</h2>
+    <div class="rs-section">
+      <h3>👥 Player Count</h3>
+      <div class="player-count-btns">
+        <button class="pc-btn" onclick="selectPlayerCount(2)">2</button>
+        <button class="pc-btn" onclick="selectPlayerCount(3)">3</button>
+        <button class="pc-btn active" onclick="selectPlayerCount(4)">4</button>
+        <button class="pc-btn" onclick="selectPlayerCount(5)">5</button>
+        <button class="pc-btn" onclick="selectPlayerCount(6)">6</button>
+        <button class="pc-btn" onclick="selectPlayerCount(7)">7</button>
+        <button class="pc-btn" onclick="selectPlayerCount(8)">8</button>
+      </div>
+    </div>
+    <div class="rs-section">
+      <h3>🤖 AI Players</h3>
+      <div class="ai-slots" id="aiSlots"></div>
+    </div>
+    <div class="rs-section">
+      <h3>🎨 Table Theme</h3>
+      <div class="theme-grid" id="themeGrid">
+        <button class="theme-btn active" onclick="selectTheme('classic')" style="background:linear-gradient(135deg,#2a2a32,#3a3a44);">
+          <div class="theme-preview" style="background:linear-gradient(135deg,rgba(60,65,70,.85),rgba(40,44,48,.95));"></div>Classic
+        </button>
+        <button class="theme-btn" onclick="selectTheme('midnight')" style="background:linear-gradient(135deg,#0a0a2a,#1a1a4a);">
+          <div class="theme-preview" style="background:linear-gradient(135deg,#0a1628,#1a2a4a);"></div>Night
+        </button>
+        <button class="theme-btn" onclick="selectTheme('royal')" style="background:linear-gradient(135deg,#2a0a3a,#4a1a6a);">
+          <div class="theme-preview" style="background:linear-gradient(135deg,#1a0a2a,#3a1a5a);"></div>Royal
+        </button>
+        <button class="theme-btn" onclick="selectTheme('ocean')" style="background:linear-gradient(135deg,#0a1a3a,#1a3a5a);">
+          <div class="theme-preview" style="background:linear-gradient(135deg,#0a2a3a,#1a4a5a);"></div>Ocean
+        </button>
+        <button class="theme-btn" onclick="selectTheme('fire')" style="background:linear-gradient(135deg,#3a0a0a,#6a1a0a);">
+          <div class="theme-preview" style="background:linear-gradient(135deg,#3a0a0a,#6a2a0a);"></div>Fire
+        </button>
+        <button class="theme-btn" onclick="selectTheme('forest')" style="background:linear-gradient(135deg,#0a2a0a,#1a4a1a);">
+          <div class="theme-preview" style="background:linear-gradient(135deg,#0a1a0a,#1a3a1a);"></div>Forest
+        </button>
+      </div>
+    </div>
+    <div class="rs-section">
+      <h3>⏱️ Turn Timer</h3>
+      <div class="player-count-btns">
+        <button class="pc-btn" onclick="selectTimer(0)" id="timerBtn0" style="width:64px;font-size:13px;">None</button>
+        <button class="pc-btn" onclick="selectTimer(20)" id="timerBtn20">20s</button>
+        <button class="pc-btn" onclick="selectTimer(30)" id="timerBtn30">30s</button>
+        <button class="pc-btn active" onclick="selectTimer(45)" id="timerBtn45">45s</button>
+        <button class="pc-btn" onclick="selectTimer(60)" id="timerBtn60">60s</button>
+        <button class="pc-btn" onclick="selectTimer(90)" id="timerBtn90">90s</button>
+      </div>
+    </div>
+    <div class="rs-section">
+      <h3>🎴 Starting Tiles</h3>
+      <div class="player-count-btns">
+        <button class="pc-btn active" onclick="selectTileCount(7)" id="tileBtn7">7</button>
+        <button class="pc-btn" onclick="selectTileCount(11)" id="tileBtn11">11</button>
+        <button class="pc-btn" onclick="selectTileCount(15)" id="tileBtn15">15</button>
+        <button class="pc-btn" onclick="selectTileCount(19)" id="tileBtn19">19</button>
+      </div>
+    </div>
+
+    <button class="btn btn-gold" onclick="createRoomWithSettings()" style="margin-bottom:10px;">🚀 Create Room</button>
+    <button class="btn btn-outline" onclick="closeRoomSettings()">← Back</button>
+  </div>
+</div>
+
+<!-- TUTORIAL -->
+<div id="tutorialScreen" class="screen" style="padding:16px;overflow-y:scroll;-webkit-overflow-scrolling:touch;height:100vh;">
+  <button onclick="backToMenu()" style="position:fixed;top:12px;right:14px;z-index:99;background:rgba(212,160,23,.15);border:1px solid rgba(212,160,23,.4);color:var(--gold);border-radius:50%;width:40px;height:40px;font-size:20px;cursor:pointer;line-height:1;">✕</button>
+  <div style="max-width:600px;margin:0 auto;padding-bottom:80px;">
+    <div style="text-align:center;margin-bottom:20px;">
+      <div style="font-family:'Playfair Display',serif;font-size:26px;font-weight:900;color:var(--gold-light);letter-spacing:3px;">📖 HOW TO PLAY?</div>
+    </div>
+    <div class="tut-card"><div class="tut-num">1</div><div class="tut-body"><div class="tut-title">🎴 Tile Colors</div><div class="tut-text"><span style="color:var(--red-t);font-weight:900;">RED = Verbs</span> · <span style="color:var(--blue-t);font-weight:900;">BLUE = Nouns</span> · <span style="color:#ccc;font-weight:900;">BLACK = Adj/Adv</span> · <span style="color:var(--gold);font-weight:900;">YELLOW = Structural</span></div></div></div>
+    <div class="tut-card"><div class="tut-num">2</div><div class="tut-body"><div class="tut-title">🎯 Goal</div><div class="tut-text">Build a valid English sentence with <strong style="color:var(--gold);">at least 7 words</strong> from your tiles and play it!</div></div></div>
+    <div class="tut-card"><div class="tut-num">3</div><div class="tut-body"><div class="tut-title">🔄 Your Turn</div><div class="tut-text"><strong style="color:#3498db;">1. Draw</strong> from pool or discard · <strong style="color:#27ae60;">2. Play</strong> a 7+ word sentence · <strong style="color:#c0392b;">or Discard</strong> a tile to pass</div></div></div>
+    <div class="tut-card"><div class="tut-num">4</div><div class="tut-body"><div class="tut-title">⚡ Hint Buttons</div><div class="tut-text"><strong style="color:var(--gold);">⚡ Best</strong> — auto-selects highest scoring sentence · <strong style="color:var(--gold);">💡 Hints</strong> — shows multiple options</div></div></div>
+    <button class="btn btn-gold" onclick="backToMenu()" style="width:100%;margin-top:12px;">🎴 Let's Play!</button>
+  </div>
+</div>
+
+<!-- LIBRARY -->
+<div id="libraryScreen" class="screen">
+  <div class="lib-header">
+    <button onclick="backToMenu()" style="position:fixed;top:12px;right:14px;z-index:99;background:rgba(212,160,23,.15);border:1px solid rgba(212,160,23,.4);color:var(--gold);border-radius:50%;width:38px;height:38px;font-size:18px;cursor:pointer;line-height:1;">✕</button>
+    <div class="lib-title">📚 WORD LIBRARY</div>
+    <div class="lib-subtitle">Explore English words</div>
+  </div>
+  <div class="lib-search-row">
+    <input class="lib-search" id="libSearch" placeholder="🔍 Search words..." oninput="renderLibrary()" autocomplete="off">
+  </div>
+  <div class="lib-filter-btns">
+    <button class="lib-filter active" onclick="setLibFilter('all',this)">All</button>
+    <button class="lib-filter r" onclick="setLibFilter('r',this)">🔴 Verbs</button>
+    <button class="lib-filter b" onclick="setLibFilter('b',this)">🔵 Nouns</button>
+    <button class="lib-filter k" onclick="setLibFilter('k',this)">⚫ Adj</button>
+    <button class="lib-filter y" onclick="setLibFilter('y',this)">🟡 Other</button>
+    <button class="lib-filter" onclick="setLibFilter('fav',this)" style="border-color:rgba(231,76,60,.4);color:rgba(231,76,60,.7);">♥ Favs</button>
+  </div>
+  <div class="lib-grid" id="libGrid"></div>
+  <button class="btn btn-outline" onclick="backToMenu()" style="width:min(320px,90vw);margin-top:8px;">← Menu</button>
+</div>
+
+<!-- WORD MODAL -->
+<div class="word-modal" id="wordModal">
+  <div class="word-box">
+    <div class="wb-word" id="wbWord"></div>
+    <div class="wb-tr" id="wbTr"></div>
+    <div class="wb-type-badge"><span class="wb-badge" id="wbBadge"></span></div>
+    <button class="wb-fav-btn" id="wbFavBtn" onclick="toggleWordFav()">♡ Add to Favorites</button>
+    <div class="wb-section"><h3>📖 Daily Usage</h3><div id="wbExamples"></div></div>
+    <div class="wb-section"><h3>🎴 Game Sentences</h3><div id="wbGameSentences"></div></div>
+    <button class="btn btn-outline" onclick="closeWordModal()" style="margin-top:4px;">✕ Close</button>
+  </div>
+</div>
+
+<!-- SETUP MODAL -->
+<div class="setup-modal" id="setupModal">
+  <div class="setup-box">
+    <h2>⚙️ Firebase Setup</h2>
+    <button class="btn btn-outline" onclick="closeSetup()" style="margin-top:8px;">Close</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===================== WORD DATA =====================
+const WORDS = {
+  r:[
+    {w:"RUN",t:"koş"},{w:"EAT",t:"ye"},{w:"SLEEP",t:"uyu"},{w:"PLAY",t:"oyna"},
+    {w:"LOVE",t:"sev"},{w:"HAVE",t:"sahip ol"},{w:"MAKE",t:"yap"},{w:"KNOW",t:"bil"},
+    {w:"THINK",t:"düşün"},{w:"COME",t:"gel"},{w:"GIVE",t:"ver"},{w:"TAKE",t:"al"},
+    {w:"SEE",t:"gör"},{w:"WANT",t:"iste"},{w:"LOOK",t:"bak"},{w:"FEEL",t:"hisset"},
+    {w:"LIKE",t:"beğen"},{w:"NEED",t:"ihtiyaç duy"},{w:"HELP",t:"yardım et"},{w:"WALK",t:"yürü"},
+    {w:"WRITE",t:"yaz"},{w:"READ",t:"oku"},{w:"TELL",t:"söyle"},{w:"GO",t:"git"},
+    {w:"MEET",t:"tanış"},{w:"TRY",t:"dene"},{w:"FIND",t:"bul"},{w:"LEARN",t:"öğren"},
+    {w:"TEACH",t:"öğret"},{w:"LISTEN",t:"dinle"},{w:"SPEAK",t:"konuş"},{w:"SHOW",t:"göster"},
+    {w:"BRING",t:"getir"},{w:"BUY",t:"satın al"},{w:"SELL",t:"sat"},{w:"OPEN",t:"aç"},
+    {w:"CLOSE",t:"kapat"},{w:"START",t:"başla"},{w:"FINISH",t:"bitir"},{w:"SEND",t:"gönder"},
+    {w:"CALL",t:"ara"},{w:"WAIT",t:"bekle"},{w:"LEAVE",t:"ayrıl"},{w:"VISIT",t:"ziyaret et"},
+    {w:"ENJOY",t:"zevk al"},{w:"SMILE",t:"gülümse"},{w:"CRY",t:"ağla"},{w:"SING",t:"şarkı söyle"},
+    {w:"DANCE",t:"dans et"},{w:"SWIM",t:"yüz"},{w:"CLIMB",t:"tırman"},{w:"DRAW",t:"çiz"},
+    {w:"PAINT",t:"boya"},{w:"COOK",t:"pişir"},{w:"CLEAN",t:"temizle"},{w:"BUILD",t:"inşa et"},
+    {w:"BREAK",t:"kır"},{w:"FIX",t:"tamir et"},{w:"USE",t:"kullan"},{w:"WORK",t:"çalış"},
+    {w:"LIVE",t:"yaşa"},{w:"MOVE",t:"taşın"},{w:"GROW",t:"büyü"},{w:"CHANGE",t:"değiş"},
+    {w:"STOP",t:"dur"},{w:"HOLD",t:"tut"},{w:"PUT",t:"koy"},{w:"KEEP",t:"sakla"},
+    {w:"LOSE",t:"kaybet"},{w:"WIN",t:"kazan"},{w:"SAVE",t:"kurtar"},{w:"SHARE",t:"paylaş"},
+    {w:"SPEND",t:"harca"},{w:"PLAN",t:"planla"},{w:"CHOOSE",t:"seç"},{w:"REMEMBER",t:"hatırla"},
+    {w:"FORGET",t:"unut"},{w:"UNDERSTAND",t:"anla"},{w:"BELIEVE",t:"inan"},{w:"HOPE",t:"umut et"},
+    {w:"DREAM",t:"hayal kur"},{w:"HEAR",t:"duy"},{w:"TOUCH",t:"dokun"},{w:"PUSH",t:"it"},
+    {w:"PULL",t:"çek"},{w:"PICK",t:"topla"},{w:"DROP",t:"düşür"},{w:"THROW",t:"fırlat"},
+    {w:"CATCH",t:"yakala"},{w:"KICK",t:"tekme at"},{w:"HIT",t:"vur"},{w:"JUMP",t:"zıpla"},
+    {w:"TURN",t:"dön"},{w:"TRAVEL",t:"seyahat et"},{w:"RETURN",t:"geri dön"},{w:"ARRIVE",t:"var"},
+    {w:"ASK",t:"sor"},{w:"ANSWER",t:"cevapla"},{w:"SAY",t:"de"},{w:"TALK",t:"konuş"},
+    {w:"AGREE",t:"katıl"},{w:"REFUSE",t:"reddet"},{w:"ACCEPT",t:"kabul et"},
+    {w:"IS",t:"dır/dir"},{w:"ARE",t:"dır/dir"},{w:"WAS",t:"idi"},{w:"WERE",t:"idiler"},
+    {w:"HAS",t:"var"},{w:"HAVE",t:"var"},{w:"HAD",t:"vardı"},
+    {w:"DO",t:"(yardımcı)"},{w:"DOES",t:"(yardımcı)"},{w:"DID",t:"(geçmiş)"},
+    {w:"WILL",t:"(gelecek)"},{w:"WOULD",t:"(koşullu)"},{w:"CAN",t:"(yapabilmek)"},
+    {w:"COULD",t:"(yapabilirdi)"},{w:"SHOULD",t:"(yapmalı)"},{w:"MUST",t:"(zorunda)"},
+    {w:"MAY",t:"(olabilir)"},{w:"MIGHT",t:"(olabilirdi)"},
+    {w:"RUNS",t:"koşar"},{w:"EATS",t:"yer"},{w:"LOVES",t:"sever"},{w:"READS",t:"okur"},
+    {w:"GETS",t:"alır"},{w:"GOES",t:"gider"},{w:"KNOWS",t:"bilir"},{w:"THINKS",t:"düşünür"},
+    {w:"SAYS",t:"söyler"},{w:"ASKS",t:"sorar"},{w:"GIVES",t:"verir"},{w:"TAKES",t:"alır"},
+    {w:"SEES",t:"görür"},{w:"FEELS",t:"hisseder"},{w:"NEEDS",t:"ihtiyaç duyar"},{w:"WANTS",t:"ister"},
+    {w:"MAKES",t:"yapar"},{w:"HELPS",t:"yardım eder"},{w:"WALKS",t:"yürür"},{w:"COMES",t:"gelir"},
+    {w:"SINGS",t:"söyler"},{w:"DANCES",t:"dans eder"},{w:"SWIMS",t:"yüzer"},{w:"WORKS",t:"çalışır"},
+    {w:"LIVES",t:"yaşar"},{w:"LISTENS",t:"dinler"},{w:"SPEAKS",t:"konuşur"},{w:"TEACHES",t:"öğretir"},
+    {w:"WRITES",t:"yazar"},{w:"PLAYS",t:"oynar"},{w:"SMILES",t:"gülümser"},{w:"CRIES",t:"ağlar"},
+    {w:"RUNNING",t:"koşarak"},{w:"EATING",t:"yiyerek"},{w:"SLEEPING",t:"uyuyarak"},
+    {w:"PLAYING",t:"oynayarak"},{w:"LOVING",t:"severek"},{w:"MAKING",t:"yaparak"},
+    {w:"GOING",t:"giderek"},{w:"SINGING",t:"şarkı söyleyerek"},{w:"DANCING",t:"dans ederek"},
+    {w:"SWIMMING",t:"yüzerek"},{w:"WALKING",t:"yürüyerek"},{w:"READING",t:"okuyarak"},
+    {w:"WRITING",t:"yazarak"},{w:"WORKING",t:"çalışarak"},{w:"LIVING",t:"yaşayarak"},
+    {w:"LEARNING",t:"öğrenerek"},{w:"TEACHING",t:"öğreterek"},{w:"COOKING",t:"pişirerek"},
+    {w:"CLEANING",t:"temizleyerek"},{w:"SMILING",t:"gülümseyerek"},{w:"CRYING",t:"ağlayarak"},
+    {w:"WAITING",t:"bekleyerek"},{w:"TALKING",t:"konuşarak"},{w:"THINKING",t:"düşünerek"},
+    {w:"COMING",t:"gelerek"},{w:"LEAVING",t:"ayrılarak"},{w:"HELPING",t:"yardım ederek"},
+    {w:"WALKED",t:"yürüdü"},{w:"TALKED",t:"konuştu"},{w:"PLAYED",t:"oynadı"},
+    {w:"LOVED",t:"sevdi"},{w:"HELPED",t:"yardım etti"},{w:"WORKED",t:"çalıştı"},
+    {w:"SMILED",t:"gülümsedi"},{w:"COOKED",t:"pişirdi"},{w:"CLEANED",t:"temizledi"},
+    {w:"CALLED",t:"aradı"},{w:"WAITED",t:"bekledi"},{w:"OPENED",t:"açtı"},
+    {w:"CLOSED",t:"kapattı"},{w:"STARTED",t:"başladı"},{w:"FINISHED",t:"bitirdi"},
+    {w:"VISITED",t:"ziyaret etti"},{w:"ENJOYED",t:"zevk aldı"},{w:"LEARNED",t:"öğrendi"},
+    {w:"SHOWED",t:"gösterdi"},{w:"MOVED",t:"taşındı"},{w:"CHANGED",t:"değişti"},
+    {w:"WANTED",t:"istedi"},{w:"NEEDED",t:"ihtiyaç duydu"},{w:"LOOKED",t:"baktı"},
+    {w:"ASKED",t:"sordu"},{w:"ANSWERED",t:"cevapladı"},{w:"AGREED",t:"katıldı"},
+    {w:"USED",t:"kullandı"},{w:"SAVED",t:"kurtardı"},{w:"SHARED",t:"paylaştı"},
+    {w:"RAN",t:"koştu"},{w:"ATE",t:"yedi"},{w:"SLEPT",t:"uyudu"},{w:"CAME",t:"geldi"},
+    {w:"WENT",t:"gitti"},{w:"SAW",t:"gördü"},{w:"GAVE",t:"verdi"},{w:"TOOK",t:"aldı"},
+    {w:"MADE",t:"yaptı"},{w:"KNEW",t:"bildi"},{w:"THOUGHT",t:"düşündü"},{w:"FELT",t:"hissetti"},
+    {w:"HEARD",t:"duydu"},{w:"FOUND",t:"buldu"},{w:"TOLD",t:"söyledi"},{w:"SANG",t:"söyledi"},
+    {w:"SWAM",t:"yüzdü"},{w:"WROTE",t:"yazdı"},{w:"BUILT",t:"inşa etti"},{w:"WON",t:"kazandı"},
+    {w:"LOST",t:"kaybetti"},{w:"SPENT",t:"harcadı"},{w:"KEPT",t:"sakladı"},{w:"HELD",t:"tuttu"},
+    {w:"BROUGHT",t:"getirdi"},{w:"BOUGHT",t:"satın aldı"},{w:"TAUGHT",t:"öğretti"},
+    {w:"CAUGHT",t:"yakaladı"},{w:"MET",t:"tanıştı"},{w:"LEFT",t:"ayrıldı"},
+    {w:"SENT",t:"gönderdi"},{w:"BROKE",t:"kırdı"},{w:"DREW",t:"çizdi"},{w:"GREW",t:"büyüdü"},
+    {w:"CHOSE",t:"seçti"},{w:"FORGOT",t:"unuttu"},{w:"BEGAN",t:"başladı"},{w:"SPOKE",t:"konuştu"},
+    {w:"BEEN",t:"olmuş"},{w:"DONE",t:"yapılmış"},{w:"SEEN",t:"görülmüş"},
+    {w:"EATEN",t:"yenilmiş"},{w:"WRITTEN",t:"yazılmış"},{w:"SPOKEN",t:"konuşulmuş"},
+    {w:"BROKEN",t:"kırılmış"},{w:"GROWN",t:"büyümüş"},{w:"KNOWN",t:"bilinmiş"},
+    {w:"CHOSEN",t:"seçilmiş"},{w:"FALLEN",t:"düşmüş"},{w:"FORGOTTEN",t:"unutulmuş"},
+  ],
+  b:[
+    {w:"CAT",t:"kedi"},{w:"DOG",t:"köpek"},{w:"BOOK",t:"kitap"},{w:"HOUSE",t:"ev"},
+    {w:"WATER",t:"su"},{w:"FOOD",t:"yemek"},{w:"TIME",t:"zaman"},{w:"LIFE",t:"hayat"},
+    {w:"WORLD",t:"dünya"},{w:"SCHOOL",t:"okul"},{w:"MUSIC",t:"müzik"},{w:"CITY",t:"şehir"},
+    {w:"TREE",t:"ağaç"},{w:"BIRD",t:"kuş"},{w:"STAR",t:"yıldız"},{w:"SUN",t:"güneş"},
+    {w:"MOON",t:"ay"},{w:"FLOWER",t:"çiçek"},{w:"FRIEND",t:"arkadaş"},{w:"FAMILY",t:"aile"},
+    {w:"CHILD",t:"çocuk"},{w:"MOTHER",t:"anne"},{w:"FATHER",t:"baba"},{w:"TEACHER",t:"öğretmen"},
+    {w:"DREAM",t:"rüya"},{w:"HEART",t:"kalp"},{w:"FISH",t:"balık"},{w:"STORY",t:"hikaye"},
+    {w:"MORNING",t:"sabah"},{w:"NIGHT",t:"gece"},{w:"DAY",t:"gün"},{w:"WEEK",t:"hafta"},
+    {w:"YEAR",t:"yıl"},{w:"HOME",t:"yuva"},{w:"ROOM",t:"oda"},{w:"DOOR",t:"kapı"},
+    {w:"WINDOW",t:"pencere"},{w:"TABLE",t:"masa"},{w:"CHAIR",t:"sandalye"},{w:"GARDEN",t:"bahçe"},
+    {w:"PARK",t:"park"},{w:"ROAD",t:"yol"},{w:"BRIDGE",t:"köprü"},{w:"RIVER",t:"nehir"},
+    {w:"SEA",t:"deniz"},{w:"MOUNTAIN",t:"dağ"},{w:"ISLAND",t:"ada"},{w:"COUNTRY",t:"ülke"},
+    {w:"MARKET",t:"pazar"},{w:"SHOP",t:"dükkan"},{w:"GAME",t:"oyun"},{w:"TEAM",t:"takım"},
+    {w:"PLAYER",t:"oyuncu"},{w:"LETTER",t:"mektup"},{w:"WORD",t:"kelime"},{w:"LANGUAGE",t:"dil"},
+    {w:"COMPUTER",t:"bilgisayar"},{w:"PHONE",t:"telefon"},{w:"CAR",t:"araba"},{w:"TRAIN",t:"tren"},
+    {w:"PLANE",t:"uçak"},{w:"TICKET",t:"bilet"},{w:"MONEY",t:"para"},{w:"JOB",t:"iş"},
+    {w:"DOCTOR",t:"doktor"},{w:"HOSPITAL",t:"hastane"},{w:"STUDENT",t:"öğrenci"},{w:"LESSON",t:"ders"},
+    {w:"QUESTION",t:"soru"},{w:"ANSWER",t:"cevap"},{w:"IDEA",t:"fikir"},{w:"PLAN",t:"plan"},
+    {w:"PROBLEM",t:"sorun"},{w:"SOLUTION",t:"çözüm"},{w:"CHANGE",t:"değişim"},{w:"FUTURE",t:"gelecek"},
+    {w:"PAST",t:"geçmiş"},{w:"MOMENT",t:"an"},{w:"PLACE",t:"yer"},{w:"WAY",t:"yol"},
+    {w:"PEACE",t:"barış"},{w:"HOPE",t:"umut"},{w:"JOY",t:"sevinç"},{w:"PAIN",t:"acı"},
+    {w:"LUCK",t:"şans"},{w:"TRUTH",t:"gerçek"},{w:"SECRET",t:"sır"},{w:"GIFT",t:"hediye"},
+    {w:"PARTY",t:"parti"},{w:"SPORT",t:"spor"},{w:"ART",t:"sanat"},{w:"SCIENCE",t:"bilim"},
+    {w:"NATURE",t:"doğa"},{w:"SKY",t:"gökyüzü"},{w:"RAIN",t:"yağmur"},{w:"SNOW",t:"kar"},
+    {w:"WIND",t:"rüzgar"},{w:"FIRE",t:"ateş"},{w:"EARTH",t:"toprak"},{w:"STONE",t:"taş"},
+    {w:"GLASS",t:"cam"},{w:"PAPER",t:"kağıt"},{w:"BREAD",t:"ekmek"},{w:"COFFEE",t:"kahve"},
+    {w:"TEA",t:"çay"},{w:"MILK",t:"süt"},{w:"FRUIT",t:"meyve"},{w:"APPLE",t:"elma"},
+    {w:"HORSE",t:"at"},{w:"LION",t:"aslan"},{w:"WOLF",t:"kurt"},{w:"BEAR",t:"ayı"},
+    {w:"BUTTERFLY",t:"kelebek"},{w:"BEACH",t:"sahil"},{w:"FOREST",t:"orman"},{w:"DESERT",t:"çöl"},
+    {w:"VILLAGE",t:"köy"},{w:"STREET",t:"sokak"},{w:"VOICE",t:"ses"},{w:"SONG",t:"şarkı"},
+    {w:"PICTURE",t:"resim"},{w:"COLOR",t:"renk"},{w:"LIGHT",t:"ışık"},{w:"SHADOW",t:"gölge"},
+    {w:"MEMORY",t:"anı"},{w:"SPIRIT",t:"ruh"},{w:"SISTER",t:"kız kardeş"},{w:"BROTHER",t:"erkek kardeş"},
+    {w:"BABY",t:"bebek"},{w:"NEIGHBOR",t:"komşu"},{w:"HERO",t:"kahraman"},{w:"KING",t:"kral"},
+    {w:"QUEEN",t:"kraliçe"},{w:"SOLDIER",t:"asker"},{w:"ARTIST",t:"sanatçı"},{w:"WRITER",t:"yazar"},
+    {w:"SINGER",t:"şarkıcı"},{w:"RUNNER",t:"koşucu"},{w:"KEY",t:"anahtar"},{w:"BOX",t:"kutu"},
+    {w:"BAG",t:"çanta"},{w:"HAT",t:"şapka"},{w:"CLOCK",t:"saat"},{w:"MAP",t:"harita"},
+  ],
+  k:[
+    {w:"BIG",t:"büyük"},{w:"SMALL",t:"küçük"},{w:"GOOD",t:"iyi"},{w:"BAD",t:"kötü"},
+    {w:"HOT",t:"sıcak"},{w:"COLD",t:"soğuk"},{w:"FAST",t:"hızlı"},{w:"SLOW",t:"yavaş"},
+    {w:"NEW",t:"yeni"},{w:"OLD",t:"eski"},{w:"HAPPY",t:"mutlu"},{w:"SAD",t:"üzgün"},
+    {w:"LONG",t:"uzun"},{w:"SHORT",t:"kısa"},{w:"BRIGHT",t:"parlak"},{w:"DARK",t:"karanlık"},
+    {w:"SOFT",t:"yumuşak"},{w:"FUNNY",t:"komik"},{w:"NICE",t:"güzel"},{w:"KIND",t:"nazik"},
+    {w:"YOUNG",t:"genç"},{w:"TALL",t:"uzun boylu"},{w:"SMART",t:"akıllı"},{w:"HARD",t:"sert"},
+    {w:"GREAT",t:"harika"},{w:"STRONG",t:"güçlü"},{w:"WEAK",t:"zayıf"},{w:"RICH",t:"zengin"},
+    {w:"POOR",t:"fakir"},{w:"BRAVE",t:"cesur"},{w:"CALM",t:"sakin"},{w:"BUSY",t:"meşgul"},
+    {w:"FREE",t:"özgür"},{w:"SAFE",t:"güvenli"},{w:"CLEAN",t:"temiz"},{w:"DIRTY",t:"kirli"},
+    {w:"QUIET",t:"sessiz"},{w:"LOUD",t:"gürültülü"},{w:"SWEET",t:"tatlı"},{w:"BITTER",t:"acı"},
+    {w:"WARM",t:"ılık"},{w:"COOL",t:"serin"},{w:"DEEP",t:"derin"},{w:"WIDE",t:"geniş"},
+    {w:"HEAVY",t:"ağır"},{w:"LIGHT",t:"hafif"},{w:"EASY",t:"kolay"},{w:"DIFFICULT",t:"zor"},
+    {w:"EARLY",t:"erken"},{w:"LATE",t:"geç"},{w:"ALONE",t:"yalnız"},{w:"ALIVE",t:"canlı"},
+    {w:"REAL",t:"gerçek"},{w:"SPECIAL",t:"özel"},{w:"BEAUTIFUL",t:"güzel"},{w:"WONDERFUL",t:"muhteşem"},
+    {w:"TIRED",t:"yorgun"},{w:"SICK",t:"hasta"},{w:"ANGRY",t:"kızgın"},{w:"AFRAID",t:"korkmuş"},
+    {w:"SURE",t:"emin"},{w:"READY",t:"hazır"},{w:"OPEN",t:"açık"},{w:"FULL",t:"dolu"},
+    {w:"EMPTY",t:"boş"},{w:"DIFFERENT",t:"farklı"},{w:"SAME",t:"aynı"},{w:"TRUE",t:"doğru"},
+    {w:"IMPORTANT",t:"önemli"},{w:"INTERESTING",t:"ilginç"},{w:"AMAZING",t:"şaşırtıcı"},
+    {w:"TERRIBLE",t:"korkunç"},{w:"PERFECT",t:"mükemmel"},{w:"SIMPLE",t:"basit"},
+    {w:"CAREFUL",t:"dikkatli"},{w:"LAZY",t:"tembel"},{w:"CLEVER",t:"zeki"},{w:"POLITE",t:"kibarlı"},
+    {w:"FRIENDLY",t:"arkadaşcanlı"},{w:"LONELY",t:"yalnız"},{w:"PROUD",t:"gururlu"},
+    {w:"EXCITED",t:"heyecanlı"},{w:"NERVOUS",t:"gergin"},{w:"BORED",t:"sıkılmış"},
+    {w:"SLOWLY",t:"yavaşça"},{w:"QUICKLY",t:"çabucak"},{w:"QUIETLY",t:"sessizce"},
+    {w:"LOUDLY",t:"gürültüyle"},{w:"CAREFULLY",t:"dikkatlice"},{w:"HAPPILY",t:"mutlulukla"},
+    {w:"SADLY",t:"üzülerek"},{w:"EASILY",t:"kolayca"},{w:"WELL",t:"iyi biçimde"},
+    {w:"VERY",t:"çok"},{w:"REALLY",t:"gerçekten"},{w:"QUITE",t:"oldukça"},{w:"ALMOST",t:"neredeyse"},
+    {w:"NEVER",t:"asla"},{w:"ALWAYS",t:"her zaman"},{w:"OFTEN",t:"sık sık"},{w:"SOMETIMES",t:"bazen"},
+    {w:"ALREADY",t:"zaten"},{w:"STILL",t:"hâlâ"},{w:"AGAIN",t:"tekrar"},{w:"SOON",t:"yakında"},
+    {w:"NOW",t:"şimdi"},{w:"THEN",t:"o zaman"},{w:"HERE",t:"burada"},{w:"THERE",t:"orada"},
+    {w:"TOGETHER",t:"birlikte"},{w:"OUTSIDE",t:"dışarıda"},{w:"INSIDE",t:"içeride"},
+    {w:"AWAY",t:"uzakta"},{w:"BACK",t:"geri"},{w:"FORWARD",t:"ileri"},
+    {w:"FINALLY",t:"sonunda"},{w:"SUDDENLY",t:"aniden"},{w:"DEEPLY",t:"derinden"},
+    {w:"KINDLY",t:"nazikçe"},{w:"BRAVELY",t:"cesurca"},{w:"PROUDLY",t:"gururla"},
+  ],
+  y:[
+    {w:"THE",t:"(belirli)"},{w:"A",t:"bir"},{w:"AN",t:"bir (sesli)"},
+    {w:"I",t:"ben"},{w:"YOU",t:"sen"},{w:"HE",t:"o(erkek)"},{w:"SHE",t:"o(kadın)"},
+    {w:"WE",t:"biz"},{w:"THEY",t:"onlar"},{w:"IT",t:"o(nesne)"},
+    {w:"ME",t:"beni"},{w:"HIM",t:"onu(erkek)"},{w:"HER",t:"onu(kadın)"},
+    {w:"US",t:"bizi"},{w:"THEM",t:"onları"},
+    {w:"MY",t:"benim"},{w:"YOUR",t:"senin"},{w:"HIS",t:"onun(erkek)"},
+    {w:"OUR",t:"bizim"},{w:"THEIR",t:"onların"},{w:"ITS",t:"onun(nesne)"},
+    {w:"THIS",t:"bu"},{w:"THAT",t:"şu/o"},{w:"THESE",t:"bunlar"},{w:"THOSE",t:"şunlar"},
+    {w:"IN",t:"içinde"},{w:"ON",t:"üstünde"},{w:"AT",t:"da/de"},{w:"TO",t:"e/a"},
+    {w:"FOR",t:"için"},{w:"WITH",t:"ile"},{w:"FROM",t:"den/dan"},{w:"OF",t:"ın/in"},
+    {w:"BY",t:"tarafından"},{w:"ABOUT",t:"hakkında"},{w:"AFTER",t:"sonra"},{w:"BEFORE",t:"önce"},
+    {w:"UNDER",t:"altında"},{w:"OVER",t:"üzerinde"},{w:"BETWEEN",t:"arasında"},
+    {w:"THROUGH",t:"içinden"},{w:"AROUND",t:"etrafında"},{w:"WITHOUT",t:"olmadan"},
+    {w:"NEAR",t:"yakın"},{w:"BEHIND",t:"arkasında"},{w:"NEXT",t:"yanında"},
+    {w:"AND",t:"ve"},{w:"BUT",t:"ama"},{w:"OR",t:"veya"},{w:"SO",t:"yani"},
+    {w:"BECAUSE",t:"çünkü"},{w:"WHEN",t:"ne zaman"},{w:"WHILE",t:"iken"},
+    {w:"IF",t:"eğer"},{w:"ALTHOUGH",t:"her ne kadar"},{w:"UNTIL",t:"kadar"},
+    {w:"SINCE",t:"den beri"},{w:"UNLESS",t:"olmadıkça"},{w:"THAN",t:"den daha"},
+    {w:"WHAT",t:"ne"},{w:"WHERE",t:"nerede"},{w:"WHY",t:"neden"},
+    {w:"HOW",t:"nasıl"},{w:"WHO",t:"kim"},{w:"WHICH",t:"hangi"},
+    {w:"NOT",t:"değil"},{w:"NO",t:"hayır"},{w:"EVERY",t:"her"},
+    {w:"EACH",t:"her biri"},{w:"ALL",t:"hepsi"},{w:"SOME",t:"bazı"},
+    {w:"ANY",t:"herhangi"},{w:"BOTH",t:"her ikisi"},{w:"MANY",t:"çok"},
+    {w:"MUCH",t:"çok"},{w:"FEW",t:"az"},{w:"MORE",t:"daha fazla"},
+    {w:"MOST",t:"en fazla"},{w:"LESS",t:"daha az"},{w:"ENOUGH",t:"yeterli"},
+    {w:"TOO",t:"çok fazla"},{w:"ONLY",t:"sadece"},{w:"JUST",t:"sadece"},
+    {w:"EVEN",t:"bile"},{w:"ALSO",t:"ayrıca"},{w:"LIKE",t:"gibi"},
+    {w:"AS",t:"olarak"},{w:"PLEASE",t:"lütfen"},{w:"YES",t:"evet"},
+    {w:"?",t:"soru işareti"},
+  ]
+};
+
+const VALID_SENTENCES = [
+  {ws:["I","WALK","IN","THE","PARK","EVERY","MORNING"],tr:"Her sabah parkta yürürüm.",pts:70},
+  {ws:["SHE","READS","A","BOOK","IN","HER","ROOM"],tr:"Odasında bir kitap okur.",pts:70},
+  {ws:["HE","PLAYS","MUSIC","WITH","HIS","BEST","FRIEND"],tr:"En iyi arkadaşıyla müzik çalar.",pts:70},
+  {ws:["WE","EAT","GOOD","FOOD","WITH","OUR","FAMILY"],tr:"Ailemizle güzel yemek yeriz.",pts:70},
+  {ws:["THEY","SING","AND","DANCE","IN","THE","GARDEN"],tr:"Bahçede şarkı söyler ve dans ederler.",pts:70},
+  {ws:["MY","CAT","SLEEPS","ON","THE","SOFT","BED"],tr:"Kedim yumuşak yatakta uyur.",pts:70},
+  {ws:["THE","YOUNG","BIRD","SINGS","IN","THE","TREE"],tr:"Genç kuş ağaçta şarkı söyler.",pts:70},
+  {ws:["MY","FATHER","READS","THE","NEWS","EVERY","MORNING"],tr:"Babam her sabah haberleri okur.",pts:70},
+  {ws:["THE","SMALL","DOG","RUNS","FAST","IN","THE","PARK"],tr:"Küçük köpek parkta hızlı koşar.",pts:80},
+  {ws:["SHE","ALWAYS","SMILES","WHEN","SHE","SEES","FLOWERS"],tr:"Çiçek görünce her zaman gülümser.",pts:70},
+  {ws:["HE","FEELS","VERY","HAPPY","WITH","HIS","FAMILY"],tr:"Ailesiyle birlikte çok mutlu hisseder.",pts:70},
+  {ws:["WE","ALWAYS","HELP","EACH","OTHER","AT","SCHOOL"],tr:"Okulda birbirimize her zaman yardım ederiz.",pts:70},
+  {ws:["I","LOVE","TO","SING","AND","DANCE","TOGETHER"],tr:"Birlikte şarkı söylemeyi ve dans etmeyi severim.",pts:70},
+  {ws:["THE","CHILDREN","PLAY","HAPPILY","IN","THE","GARDEN"],tr:"Çocuklar bahçede mutlulukla oynar.",pts:70},
+  {ws:["MY","MOTHER","COOKS","BEAUTIFUL","FOOD","FOR","US"],tr:"Annem bizim için güzel yemek pişirir.",pts:70},
+  {ws:["THE","OLD","MAN","WALKS","SLOWLY","BY","THE","RIVER"],tr:"Yaşlı adam nehir kenarında yavaşça yürür.",pts:80},
+  {ws:["SHE","LOVES","TO","READ","BOOKS","IN","THE","MORNING"],tr:"Sabahları kitap okumayı sever.",pts:80},
+  {ws:["HE","GOES","TO","SCHOOL","WITH","HIS","BEST","FRIEND"],tr:"Okula en iyi arkadaşıyla gider.",pts:80},
+  {ws:["THE","BRIGHT","STAR","SHINES","IN","THE","DARK","NIGHT"],tr:"Parlak yıldız karanlık gecede parlar.",pts:80},
+  {ws:["MY","SISTER","HELPS","ME","WITH","MY","SCHOOL","WORK"],tr:"Kız kardeşim bana okul işlerimde yardım eder.",pts:80},
+  {ws:["THE","YOUNG","STUDENT","LEARNS","NEW","WORDS","EVERY","DAY"],tr:"Genç öğrenci her gün yeni kelimeler öğrenir.",pts:80},
+  {ws:["I","THINK","THE","OLD","HOUSE","IS","VERY","BEAUTIFUL"],tr:"Eski evin çok güzel olduğunu düşünüyorum.",pts:80},
+  {ws:["SHE","FEELS","CALM","AND","HAPPY","IN","THE","GARDEN"],tr:"Bahçede sakin ve mutlu hisseder.",pts:80},
+  {ws:["WE","LOVE","TO","WALK","TOGETHER","IN","THE","PARK"],tr:"Parkta birlikte yürümeyi severiz.",pts:80},
+  {ws:["I","WANT","TO","FIND","A","GOOD","SOLUTION","TOGETHER"],tr:"Birlikte iyi bir çözüm bulmak istiyorum.",pts:80},
+  {ws:["HE","READS","A","LONG","STORY","TO","HIS","CHILD"],tr:"Çocuğuna uzun bir hikaye okur.",pts:80},
+  {ws:["WE","NEED","TO","LEARN","NEW","THINGS","EVERY","DAY"],tr:"Her gün yeni şeyler öğrenmemiz gerekiyor.",pts:80},
+  {ws:["I","FEEL","SO","CALM","WHEN","I","HEAR","MUSIC"],tr:"Müzik duyunca çok sakin hissederim.",pts:80},
+  {ws:["SHE","WANTS","TO","VISIT","THE","BEAUTIFUL","OLD","CITY"],tr:"O güzel eski şehri ziyaret etmek istiyor.",pts:80},
+  {ws:["I","LOVE","TO","READ","BOOKS","AND","LEARN","NEW","WORDS"],tr:"Kitap okumayı ve yeni kelimeler öğrenmeyi severim.",pts:90},
+  {ws:["HE","GOES","TO","THE","PARK","WITH","HIS","BEST","FRIEND"],tr:"En iyi arkadaşıyla parka gider.",pts:90},
+  {ws:["WE","LOVE","TO","PLAY","GAMES","TOGETHER","IN","THE","GARDEN"],tr:"Bahçede birlikte oyun oynamayı severiz.",pts:90},
+  {ws:["MY","MOTHER","MAKES","THE","BEST","FOOD","IN","THE","WORLD"],tr:"Annem dünyanın en iyi yemeğini yapar.",pts:90},
+  {ws:["I","FEEL","VERY","CALM","WHEN","I","WALK","IN","NATURE"],tr:"Doğada yürüdüğümde çok sakin hissederim.",pts:90},
+  {ws:["SHE","LOVES","TO","SING","AND","DANCE","WITH","HER","FRIENDS"],tr:"Arkadaşlarıyla şarkı söylemeyi ve dans etmeyi sever.",pts:90},
+  {ws:["WE","NEED","EACH","OTHER","TO","BUILD","A","BETTER","WORLD"],tr:"Daha iyi bir dünya inşa etmek için birbirimize ihtiyacımız var.",pts:90},
+  {ws:["I","WANT","TO","LEARN","HOW","TO","SPEAK","NEW","LANGUAGES"],tr:"Yeni diller konuşmayı öğrenmek istiyorum.",pts:90},
+  {ws:["I","LOVE","TO","WALK","IN","THE","PARK","WITH","MY","FRIEND"],tr:"Arkadaşımla parkta yürümeyi severim.",pts:100},
+  {ws:["SHE","ALWAYS","READS","A","BOOK","BEFORE","SHE","GOES","TO","SLEEP"],tr:"Uyumadan önce her zaman bir kitap okur.",pts:100},
+  {ws:["HE","FEELS","VERY","HAPPY","AND","CALM","WHEN","HE","HEARS","MUSIC"],tr:"Müzik duyunca çok mutlu ve sakin hisseder.",pts:100},
+  {ws:["WE","LOVE","TO","EAT","GOOD","FOOD","AND","TELL","FUNNY","STORIES"],tr:"Güzel yemek yemeyi ve komik hikayeler anlatmayı severiz.",pts:100},
+  {ws:["I","FEEL","SO","CALM","AND","HAPPY","WHEN","I","WALK","ALONE"],tr:"Yalnız yürüdüğümde çok sakin ve mutlu hissederim.",pts:100},
+  {ws:["WE","NEED","TO","WORK","TOGETHER","AND","BUILD","A","BETTER","FUTURE"],tr:"Birlikte çalışıp daha iyi bir gelecek inşa etmeliyiz.",pts:100},
+  {ws:["DO","YOU","WALK","IN","THE","PARK","EVERY","MORNING","?"],tr:"Her sabah parkta yürür müsün?",pts:90},
+  {ws:["DOES","SHE","SING","BEAUTIFUL","SONGS","IN","THE","MORNING","?"],tr:"Sabahları güzel şarkılar söyler mi?",pts:90},
+  {ws:["CAN","YOU","HELP","ME","WITH","MY","SCHOOL","WORK","?"],tr:"Okul işlerimde bana yardım edebilir misin?",pts:90},
+  {ws:["WILL","SHE","COME","TO","THE","PARTY","WITH","HER","FRIEND","?"],tr:"Arkadaşıyla partiye gelecek mi?",pts:90},
+  {ws:["DID","HE","WALK","TO","SCHOOL","ALONE","IN","THE","RAIN","?"],tr:"Yağmurda okula yalnız yürüdü mü?",pts:90},
+  {ws:["I","DO","NOT","WALK","IN","THE","PARK","EVERY","DAY"],tr:"Her gün parkta yürümem.",pts:90},
+  {ws:["SHE","DOES","NOT","EAT","MEAT","BECAUSE","SHE","IS","KIND"],tr:"Nazik olduğu için et yemez.",pts:90},
+  {ws:["HE","DOES","NOT","LIKE","COLD","WEATHER","IN","WINTER"],tr:"Kışın soğuk havayı sevmez.",pts:90},
+  {ws:["SHE","LOVES","SINGING","BEAUTIFUL","SONGS","IN","THE","MORNING"],tr:"Sabahları güzel şarkılar söylemeyi sever.",pts:80},
+  {ws:["HE","ENJOYS","WALKING","SLOWLY","BY","THE","QUIET","RIVER"],tr:"Sessiz nehir kenarında yavaşça yürümekten zevk alır.",pts:80},
+  {ws:["WE","ARE","LEARNING","NEW","WORDS","BY","PLAYING","THIS","BEAUTIFUL","GAME"],tr:"Bu güzel oyunu oynayarak yeni kelimeler öğreniyoruz.",pts:100},
+  {ws:["THEY","ARE","BUILDING","A","NEW","HOUSE","NEAR","THE","RIVER"],tr:"Nehir kenarında yeni bir ev inşa ediyorlar.",pts:90},
+  {ws:["SHE","WALKED","SLOWLY","TO","SCHOOL","IN","THE","COLD","MORNING"],tr:"Soğuk sabahta okula yavaşça yürüdü.",pts:90},
+  {ws:["HE","SANG","A","BEAUTIFUL","SONG","FOR","HIS","BEST","FRIEND"],tr:"En iyi arkadaşı için güzel bir şarkı söyledi.",pts:90},
+  {ws:["WE","PLAYED","TOGETHER","IN","THE","GARDEN","ALL","DAY","LONG"],tr:"Bütün gün bahçede birlikte oynadık.",pts:90},
+  {ws:["I","FELT","SO","HAPPY","WHEN","I","HEARD","THE","GOOD","NEWS"],tr:"İyi haberi duyunca çok mutlu hissettim.",pts:100},
+  {ws:["WE","SANG","AND","DANCED","TOGETHER","UNTIL","THE","SUN","WENT","DOWN"],tr:"Güneş batana kadar birlikte şarkı söyleyip dans ettik.",pts:100},
+  {ws:["I","WILL","WALK","IN","THE","PARK","WITH","YOU","TOMORROW"],tr:"Yarın seninle parkta yürüyeceğim.",pts:90},
+  {ws:["WE","WILL","BUILD","A","BETTER","WORLD","FOR","OUR","CHILDREN"],tr:"Çocuklarımız için daha iyi bir dünya inşa edeceğiz.",pts:90},
+  {ws:["YOU","CAN","LEARN","NEW","WORDS","EASILY","BY","PLAYING","THIS","GAME"],tr:"Bu oyunu oynayarak kolayca yeni kelimeler öğrenebilirsin.",pts:100},
+  {ws:["WE","SHOULD","HELP","EACH","OTHER","BECAUSE","WE","ARE","FAMILY"],tr:"Aile olduğumuz için birbirimize yardım etmeliyiz.",pts:90},
+  {ws:["I","HAVE","WALKED","IN","THIS","BEAUTIFUL","PARK","MANY","TIMES"],tr:"Bu güzel parkta birçok kez yürüdüm.",pts:90},
+  {ws:["THE","CAT","SLEEPS","QUIETLY","UNDER","THE","BIG","OLD","TREE"],tr:"Kedi büyük eski ağacın altında sessizce uyur.",pts:90},
+  {ws:["THE","CHILDREN","RUN","AND","LAUGH","HAPPILY","AROUND","THE","GARDEN"],tr:"Çocuklar bahçede mutlulukla koşup gülerler.",pts:90},
+  {ws:["THE","BIRDS","SING","LOUDLY","OUTSIDE","MY","WINDOW","EVERY","MORNING"],tr:"Kuşlar her sabah penceremde gürültüyle şarkı söyler.",pts:90},
+  {ws:["THE","SMALL","FISH","SWIM","FREELY","IN","THE","DEEP","BLUE","SEA"],tr:"Küçük balıklar derin mavi denizde özgürce yüzer.",pts:100},
+  {ws:["I","WALK","FAST","BECAUSE","I","AM","LATE","FOR","SCHOOL"],tr:"Okula geç kaldığım için hızlı yürüyorum.",pts:90},
+  {ws:["HE","WORKS","HARD","BECAUSE","HE","WANTS","A","BETTER","LIFE"],tr:"Daha iyi bir hayat istediği için çok çalışır.",pts:90},
+  {ws:["IF","YOU","LEARN","NEW","WORDS","EVERY","DAY","YOU","WILL","SPEAK","WELL"],tr:"Her gün yeni kelimeler öğrenirsen iyi konuşursun.",pts:110},
+  {ws:["LEARNING","A","NEW","LANGUAGE","IS","DIFFICULT","BUT","VERY","INTERESTING"],tr:"Yeni bir dil öğrenmek zor ama çok ilginç.",pts:90},
+  {ws:["WALKING","ALONE","IN","THE","QUIET","FOREST","MAKES","ME","FEEL","CALM"],tr:"Sessiz ormanda yalnız yürümek beni sakin hissettiriyor.",pts:100},
+];
+
+// ===================== GLOBAL STATE =====================
+var db = null;
+var myPlayerId = 'p_' + Math.random().toString(36).substr(2, 9);
+var myRoomCode = null;
+var myPlayerIndex = -1;
+var isHost = false;
+var roomRef = null;
+var localState = null;
+var humanDrawn = false;
+var sentenceTiles = [];
+var selectedTileIdx = null;
+var unsubscribers = [];
+
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyA27gfKA_wzFZbVpRzCo2l6eZ9wZealy8s",
+  authDomain: "kelime-okey.firebaseapp.com",
+  databaseURL: "https://kelime-okey-default-rtdb.firebaseio.com",
+  projectId: "kelime-okey",
+  storageBucket: "kelime-okey.firebasestorage.app",
+  messagingSenderId: "156391224756",
+  appId: "1:156391224756:web:e853952af6cb82abbaeee1"
+};
+
+window.onload = () => {
+  function tryInit(attempts) {
+    if (typeof firebase !== "undefined") {
+      try {
+        if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+        db = firebase.database();
+        hideConfigBanner();
+      } catch(e) {
+        hideConfigBanner();
+        setTimeout(() => tryInit(3), 1000);
+      }
+    } else if (attempts > 0) {
+      setTimeout(() => tryInit(attempts - 1), 300);
+    } else {
+      setTimeout(() => {
+        if (typeof firebase !== "undefined") {
+          try { if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG); db = firebase.database(); } catch(e) {}
+        }
+      }, 2000);
+      hideConfigBanner();
+    }
+  }
+  tryInit(20);
+  const params = new URLSearchParams(window.location.search);
+  const roomFromUrl = params.get("room");
+  if (roomFromUrl) {
+    document.getElementById("roomCodeInput").value = roomFromUrl.toUpperCase();
+    showToast("🔗 Room: " + roomFromUrl.toUpperCase() + " — enter your name and join!", 4000);
+  }
+};
+
+function showConfigBanner() { document.getElementById('configBanner').style.display = 'block'; }
+function hideConfigBanner() { document.getElementById('configBanner').style.display = 'none'; }
+function showSetup() {}
+function closeSetup() { document.getElementById('setupModal').classList.remove('active'); }
+
+function showToast(msg, dur=2800) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), dur);
+}
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function addLog(msg, hi=false) {
+  const log = document.getElementById('gameLog');
+  if (!log) return;
+  const d = document.createElement('div');
+  d.className = 'log-e' + (hi?' hi':'');
+  d.textContent = msg;
+  log.appendChild(d);
+  log.scrollTop = log.scrollHeight;
+}
+function shuffle(a) {
+  for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
+  return a;
+}
+function shuffleArr(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function rnd4() {
+  const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let r='';for(let i=0;i<4;i++)r+=chars[Math.floor(Math.random()*chars.length)];
+  return r;
+}
+
+const THEMES = {
+  classic: { bg:'linear-gradient(135deg,#1a1a1e 0%,#26262e 50%,#1a1a1e 100%)', name:'Classic' },
+  midnight: { bg:'linear-gradient(135deg,#050510 0%,#0a0a20 50%,#050510 100%)', name:'Night' },
+  royal: { bg:'linear-gradient(135deg,#0f0520 0%,#1a0a30 50%,#0f0520 100%)', name:'Royal' },
+  ocean: { bg:'linear-gradient(135deg,#020a15 0%,#051525 50%,#020a15 100%)', name:'Ocean' },
+  fire:  { bg:'linear-gradient(135deg,#150202 0%,#250805 50%,#150202 100%)', name:'Fire' },
+  forest:{ bg:'linear-gradient(135deg,#020f02 0%,#051505 50%,#020f02 100%)', name:'Forest' }
+};
+
+const AI_NAMES = ['Ayse','Mehmet','Fatma','Ali','Zeynep','Kemal','Elif','Burak'];
+var roomSettings = { playerCount:4, aiSlots:{}, theme:'classic', timerDuration:45, tileCount:7 };
+var savedPlayerName = '';
+var turnTimerInterval = null;
+var turnTimerLeft = 0;
+
+function showRoomSettings() {
+  var name = document.getElementById('playerName').value.trim();
+  if (!name) { showToast('Enter your name first! 😊'); return; }
+  savedPlayerName = name;
+  document.getElementById('roomSettingsModal').classList.add('active');
+  renderAISlots();
+}
+
+function closeRoomSettings() {
+  document.getElementById('roomSettingsModal').classList.remove('active');
+}
+
+function selectPlayerCount(n) {
+  roomSettings.playerCount = n;
+  document.querySelectorAll('.player-count-btns').forEach(function(row) {
+    if(!row.querySelector('[id^="timerBtn"]')) {
+      row.querySelectorAll('.pc-btn').forEach(function(btn) {
+        btn.classList.toggle('active', parseInt(btn.textContent) === n);
+      });
+    }
+  });
+  renderAISlots();
+}
+
+function renderAISlots() {
+  var n = roomSettings.playerCount;
+  var container = document.getElementById('aiSlots');
+  var colors = ['linear-gradient(135deg,#e74c3c,#c0392b)','linear-gradient(135deg,#3498db,#1a5276)','linear-gradient(135deg,#2ecc71,#1a7a1a)','linear-gradient(135deg,#f39c12,#d68910)','linear-gradient(135deg,#9b59b6,#6c3483)','linear-gradient(135deg,#1abc9c,#0e8072)','linear-gradient(135deg,#e67e22,#ca6f1e)'];
+  var html = '';
+  for (var i = 1; i < n; i++) {
+    var slotKey = 'slot_' + i;
+    var aiData = roomSettings.aiSlots[slotKey];
+    var isAI = aiData ? aiData.isAI !== false : true;
+    var aiName = (aiData && aiData.name) ? aiData.name : AI_NAMES[(i-1) % AI_NAMES.length];
+    var col = colors[i % colors.length];
+    var checked = isAI ? 'checked' : '';
+    var opacity = isAI ? '' : 'opacity:.3;';
+    html += '<div class="ai-slot">';
+    html += '<div class="ai-slot-num" style="background:' + col + '">🤖</div>';
+    html += '<div class="ai-slot-label">Player ' + (i+1) + '</div>';
+    html += '<input class="ai-name-input" id="ainame_' + i + '" value="' + aiName + '" placeholder="AI name" style="' + opacity + '">';
+    html += '<label class="ai-toggle"><input type="checkbox" id="aitoggle_' + i + '" ' + checked + ' onchange="toggleAISlot(' + i + ')"><span class="ai-toggle-slider"></span></label>';
+    html += '</div>';
+  }
+  if (n <= 1 || html === '') html = '<div style="color:rgba(245,230,200,.4);text-align:center;font-size:13px;padding:10px;">All slots filled.</div>';
+  container.innerHTML = html;
+}
+
+function toggleAISlot(i) {
+  var cb = document.getElementById('aitoggle_' + i);
+  var inp = document.getElementById('ainame_' + i);
+  var slotKey = 'slot_' + i;
+  if (!roomSettings.aiSlots[slotKey]) roomSettings.aiSlots[slotKey] = {};
+  roomSettings.aiSlots[slotKey].isAI = cb.checked;
+  if (inp) inp.style.opacity = cb.checked ? '1' : '0.3';
+}
+
+function selectTheme(theme) {
+  roomSettings.theme = theme;
+  document.querySelectorAll('.theme-btn').forEach(function(btn){
+    btn.classList.toggle('active', btn.getAttribute('onclick') === "selectTheme('" + theme + "')");
+  });
+}
+
+function selectTimer(sec) {
+  roomSettings.timerDuration = sec;
+  [0,20,30,45,60,90].forEach(function(s){
+    var btn = document.getElementById('timerBtn'+s);
+    if(btn) btn.classList.toggle('active', s===sec);
+  });
+}
+
+function selectTileCount(n) {
+  roomSettings.tileCount = n;
+  [7,11,15,19].forEach(function(s){
+    var btn = document.getElementById('tileBtn'+s);
+    if(btn) btn.classList.toggle('active', s===n);
+  });
+}
+
+function applyTheme(theme) {
+  var t = THEMES[theme] || THEMES.classic;
+  document.body.style.background = t.bg;
+}
+
+async function createRoomWithSettings() {
+  var name = savedPlayerName || document.getElementById('playerName').value.trim();
+  if (!name) { showToast('⚠️ Enter your name first!'); closeRoomSettings(); return; }
+  if (!db) { showToast('⏳ Connecting...'); setTimeout(createRoomWithSettings, 2000); return; }
+  showToast('🔄 Creating room...');
+
+  var n = roomSettings.playerCount;
+  var aiConfig = {};
+  for (var i = 1; i < n; i++) {
+    var cb = document.getElementById('aitoggle_' + i);
+    var inp = document.getElementById('ainame_' + i);
+    var slotKey = 'slot_' + i;
+    aiConfig[slotKey] = {
+      isAI: cb ? cb.checked : true,
+      name: inp && inp.value.trim() ? inp.value.trim() : AI_NAMES[(i-1) % AI_NAMES.length]
+    };
+  }
+  roomSettings.aiSlots = aiConfig;
+  closeRoomSettings();
+
+  myRoomCode = rnd4();
+  myPlayerIndex = 0;
+  isHost = true;
+
+  try {
+    roomRef = db.ref('rooms/' + myRoomCode);
+    await roomRef.set({
+      host: myPlayerId, status: 'waiting', playerCount: n,
+      theme: roomSettings.theme || 'classic', timerDuration: roomSettings.timerDuration || 45, tileCount: roomSettings.tileCount || 7,
+      aiConfig: aiConfig,
+      players: { [myPlayerId]: { name: name, index: 0, score: 0, handCount: 0, id: myPlayerId, isAI: false } },
+      createdAt: Date.now()
+    });
+    roomRef.child('players/' + myPlayerId).onDisconnect().remove();
+
+    var aiCount = Object.values(aiConfig).filter(function(a){ return a.isAI; }).length;
+    var el = function(id){ return document.getElementById(id); };
+    if(el('settingsChipCount')) el('settingsChipCount').textContent = '👥 ' + n + ' Players';
+    if(el('settingsChipTheme')) el('settingsChipTheme').textContent = '🎨 ' + (THEMES[roomSettings.theme]||THEMES.classic).name;
+    if(el('settingsChipAI')) el('settingsChipAI').textContent = aiCount > 0 ? '🤖 ' + aiCount + ' AI' : '🤖 No AI';
+    if(el('lobbyWaitCount')) el('lobbyWaitCount').textContent = n;
+
+    document.getElementById('displayRoomCode').textContent = myRoomCode;
+    generateQR();
+    listenLobby();
+    applyTheme(roomSettings.theme || 'classic');
+    showScreen('lobbyScreen');
+  } catch(err) {
+    showToast('❌ Error: ' + err.message);
+  }
+}
+
+async function joinRoom() {
+  if (!db) { showToast('⚠️ Connecting...'); return; }
+  const name = document.getElementById('playerName').value.trim();
+  if (!name) { showToast('Enter your name!'); return; }
+  const code = document.getElementById('roomCodeInput').value.trim().toUpperCase();
+  if (code.length !== 4) { showToast('Enter a 4-digit code!'); return; }
+
+  const snap = await db.ref('rooms/' + code).once('value');
+  if (!snap.exists()) { showToast('❌ Room not found!'); return; }
+  const room = snap.val();
+  if (room.status !== 'waiting') { showToast('❌ Game already started!'); return; }
+  const playerCount = Object.keys(room.players || {}).length;
+  if (playerCount >= (room.playerCount || 4)) { showToast('❌ Room is full!'); return; }
+
+  myRoomCode = code;
+  myPlayerIndex = playerCount;
+  isHost = false;
+  roomRef = db.ref('rooms/' + code);
+  await roomRef.child('players/' + myPlayerId).set({ name, index: myPlayerIndex, score: 0, handCount: 0, id: myPlayerId });
+  roomRef.child('players/' + myPlayerId).onDisconnect().remove();
+  document.getElementById('displayRoomCode').textContent = myRoomCode;
+  generateQR();
+  listenLobby();
+  showScreen('lobbyScreen');
+}
+
+function generateQR() {
+  const container = document.getElementById('qrContainer');
+  container.innerHTML = '';
+  const url = 'https://keremthechosenone1.github.io/7WTS/14?room=' + myRoomCode;
+  try {
+    new QRCode(container, { text: url, width: 140, height: 140, colorDark:'#2d1005', colorLight:'#fdf6e3', correctLevel: QRCode.CorrectLevel.M });
+  } catch(e) {
+    container.innerHTML = `<div style="color:var(--gold);text-align:center;padding:20px;font-size:11px;">📱 ${url}</div>`;
+  }
+}
+
+function listenLobby() {
+  const unsub = roomRef.on('value', snap => {
+    if (!snap.exists()) { leaveRoom(); return; }
+    const room = snap.val();
+    renderLobby(room);
+    if (room.status === 'playing' && room.gameState) startLocalGame(room.gameState);
+  });
+  unsubscribers.push(() => roomRef.off('value', unsub));
+}
+
+function renderLobby(room) {
+  const totalCount = room.playerCount || 4;
+  const aiConfig = room.aiConfig || {};
+  const humanPlayers = Object.values(room.players || {}).sort((a,b)=>a.index-b.index);
+  const slots = document.getElementById('playerSlots');
+  const colors = ['linear-gradient(135deg,#e74c3c,#c0392b)','linear-gradient(135deg,#3498db,#1a5276)','linear-gradient(135deg,#2ecc71,#1a7a1a)','linear-gradient(135deg,#f39c12,#d68910)','linear-gradient(135deg,#9b59b6,#6c3483)','linear-gradient(135deg,#1abc9c,#0e8072)','linear-gradient(135deg,#e67e22,#ca6f1e)','linear-gradient(135deg,#e74c3c,#c0392b)'];
+
+  let humanSlots = 1;
+  for(let i=1;i<totalCount;i++){
+    const ai = aiConfig['slot_'+i];
+    if(!ai || !ai.isAI) humanSlots++;
+  }
+
+  let html = '';
+  for(let i=0;i<totalCount;i++){
+    const p = humanPlayers.find(x=>x.index===i);
+    const isMe = p && p.id === myPlayerId;
+    const aiSlot = aiConfig['slot_'+i];
+    const isAISlot = i>0 && aiSlot && aiSlot.isAI;
+    if(isAISlot){
+      html += '<div class="player-slot filled"><div class="slot-num" style="background:'+colors[i%colors.length]+'">🤖</div><div class="slot-name">'+aiSlot.name+'</div><span class="slot-badge" style="color:rgba(100,200,255,.7);">AI</span></div>';
+    } else if(p){
+      html += '<div class="player-slot filled '+(isMe?'me':'')+'"><div class="slot-num" style="background:'+colors[i%colors.length]+'">👤</div><div class="slot-name">'+p.name+'</div>'+(isMe?'<span class="slot-badge">You</span>':'<span class="slot-badge" style="color:rgba(150,255,150,.7);">✓</span>')+'</div>';
+    } else {
+      html += '<div class="player-slot"><div class="slot-num" style="background:rgba(255,255,255,.1)">·</div><div class="slot-empty">Player '+(i+1)+' waiting...</div></div>';
+    }
+  }
+  slots.innerHTML = html;
+
+  if(room.theme) applyTheme(room.theme);
+
+  const humanCnt = humanPlayers.length;
+  const startBtn = document.getElementById('startBtn');
+  const status = document.getElementById('lobbyStatus');
+
+  if(humanCnt >= humanSlots){
+    status.innerHTML = '✅ All players ready!';
+    if(isHost){ startBtn.disabled=false; startBtn.textContent='🚀 Start Game!'; }
+    else { startBtn.disabled=true; startBtn.textContent='⏳ Host will start...'; }
+  } else {
+    const remaining = humanSlots - humanCnt;
+    status.innerHTML = '<span class="waiting-dots"><span class="wd"></span><span class="wd"></span><span class="wd"></span></span> '+remaining+' more player(s) needed...';
+    startBtn.disabled=true;
+    startBtn.textContent='🚀 Start ('+humanCnt+'/'+humanSlots+')';
+  }
+}
+
+async function leaveRoom() {
+  unsubscribers.forEach(fn=>fn());
+  unsubscribers=[];
+  if(roomRef && myPlayerId) await roomRef.child('players/'+myPlayerId).remove();
+  roomRef=null; myRoomCode=null; myPlayerIndex=-1; isHost=false;
+  localState=null; sentenceTiles=[]; selectedTileIdx=null; humanDrawn=false;
+  backToMenu();
+}
+
+function backToMenu() { showScreen('menuScreen'); }
+
+async function hostStartGame() {
+  if(!isHost || !db) return;
+  const snap = await roomRef.once('value');
+  const room = snap.val();
+  const totalCount = room.playerCount || 4;
+  const aiConfig = room.aiConfig || {};
+  const humanPlayers = Object.values(room.players || {}).sort((a,b)=>a.index-b.index);
+  const allPlayers = [];
+
+  for(let i=0; i<totalCount; i++){
+    const aiSlot = aiConfig['slot_'+i];
+    const isAISlot = i>0 && aiSlot && aiSlot.isAI;
+    if(isAISlot){
+      allPlayers.push({ id:'ai_'+i, name:aiSlot.name, index:i, score:0, isAI:true });
+    } else {
+      const hp = humanPlayers.find(p=>p.index===i) || humanPlayers[allPlayers.filter(p=>!p.isAI).length];
+      if(hp) allPlayers.push({...hp, index:i});
+    }
+  }
+
+  const gameState = buildInitialState(allPlayers, room.tileCount || 7);
+  gameState.theme = room.theme || 'classic';
+  gameState.timerDuration = room.timerDuration || 0;
+  gameState.tileCount = room.tileCount || 7;
+  await roomRef.update({ status:'playing', gameState });
+}
+
+function buildPool() {
+  const pool = [];
+  const freqMap = {};
+  VALID_SENTENCES.forEach(s => { s.ws.forEach(w => { freqMap[w] = (freqMap[w]||0) + 1; }); });
+  ['r','b','k','y'].forEach(color => {
+    WORDS[color].forEach(w => {
+      const freq = freqMap[w.w] || 0;
+      const copies = freq >= 10 ? 8 : freq >= 5 ? 6 : freq >= 2 ? 4 : 3;
+      for(let i = 0; i < copies; i++) pool.push({w:w.w, t:w.t, c:color, id:Math.random().toString(36).substr(2,9)});
+    });
+  });
+  for(let i=0;i<8;i++){
+    pool.push({w:'JOKER',t:'joker',c:'joker',id:'j_'+i+'_'+Math.random().toString(36).substr(2,5)});
+    pool.push({w:'?',t:'joker(?)',c:'joker',id:'q_'+i+'_'+Math.random().toString(36).substr(2,5)});
+  }
+  return shuffleArr(pool);
+}
+
+function buildInitialState(players) {
+  let pool = buildPool();
+  const hands = {};
+  var tc = (localState && localState.tileCount) || roomSettings.tileCount || 7;
+  players.forEach((p)=>{ hands[p.id] = pool.splice(0, tc); });
+  const discard = [pool.splice(0,1)[0]];
+  return {
+    pool, discard, hands,
+    players: players.map(p=>({id:p.id,name:p.name,index:p.index,score:0,isAI:p.isAI||false})),
+    currentTurn: 0, round: 1, status: 'playing',
+    log: ['Game started! Build an English sentence 🎴'],
+    lastAction: null,
+  };
+}
+
+function startLocalGame(gs) {
+  localState = JSON.parse(JSON.stringify(gs));
+  sentenceTiles = [];
+  selectedTileIdx = null;
+  humanDrawn = false;
+  rackSlots = null;
+  if(gs.theme) applyTheme(gs.theme);
+  showScreen('gameScreen');
+  renderGame();
+
+  if(isHost) {
+    var firstCp = gs.players[gs.currentTurn];
+    if(firstCp && firstCp.isAI) setTimeout(()=>runAITurn(), 2000);
+  }
+
+  roomRef.child('gameState').on('value', snap=>{
+    if(!snap.exists()) return;
+    const newState = snap.val();
+    if(JSON.stringify(newState)!==JSON.stringify(localState)){
+      localState = JSON.parse(JSON.stringify(newState));
+      sentenceTiles = [];
+      selectedTileIdx = null;
+      if(!isMyTurn()) { humanDrawn = false; rackSlots = null; }
+      if(newState.theme) applyTheme(newState.theme);
+      renderGame();
+      if(newState.status==='won'){ showWin(newState); stopTurnTimer(); return; }
+      if(newState.status==='playing'){
+        const dur = newState.timerDuration || 0;
+        startTurnTimer(dur, newState.currentTurn);
+        const cp = newState.players[newState.currentTurn];
+        if(cp && cp.isAI && isHost){
+          setTimeout(()=>{
+            if(localState && localState.players[localState.currentTurn] && localState.players[localState.currentTurn].isAI && isHost) runAITurn();
+          }, 1200 + Math.random()*600);
+        }
+      }
+    }
+  });
+}
+
+function isMyTurn() {
+  if(!localState) return false;
+  const cp = localState.players[localState.currentTurn];
+  return cp && cp.id === myPlayerId;
+}
+function getMyPlayer() { return localState.players.find(p=>p.id===myPlayerId); }
+function getMyHand() { return localState.hands[myPlayerId] || []; }
+
+function startTurnTimer(duration, turnIdx) {
+  stopTurnTimer();
+  var wrap = document.getElementById('topbarTimer');
+  var bar = document.getElementById('timerBar');
+  var disp = document.getElementById('timerDisplay');
+  if(!wrap || !duration || duration === 0) { if(wrap) wrap.style.display='none'; return; }
+  wrap.style.display = 'flex';
+  turnTimerLeft = duration;
+  function tick() {
+    if(!localState || localState.status !== 'playing' || localState.currentTurn !== turnIdx) { stopTurnTimer(); return; }
+    var pct = (turnTimerLeft / duration) * 100;
+    bar.style.width = pct + '%';
+    disp.textContent = turnTimerLeft + 's';
+    if(turnTimerLeft <= 10) { disp.classList.add('urgent'); bar.style.background='linear-gradient(90deg,#e74c3c,#c0392b)'; }
+    else { disp.classList.remove('urgent'); bar.style.background='linear-gradient(90deg,#27ae60,#f0c040,#c0392b)'; }
+    if(turnTimerLeft <= 0) { stopTurnTimer(); if(isMyTurn()) { showToast('⏰ Time up!', 2000); autoPassTurn(); } return; }
+    turnTimerLeft--;
+  }
+  tick();
+  turnTimerInterval = setInterval(tick, 1000);
+}
+
+function stopTurnTimer() {
+  if(turnTimerInterval) { clearInterval(turnTimerInterval); turnTimerInterval = null; }
+  var wrap = document.getElementById('topbarTimer');
+  var disp = document.getElementById('timerDisplay');
+  if(wrap) wrap.style.display = 'none';
+  if(disp) disp.classList.remove('urgent');
+  turnTimerLeft = 0;
+}
+
+async function autoPassTurn() {
+  if(!isMyTurn() || !localState || !db) return;
+  const newState = JSON.parse(JSON.stringify(localState));
+  if(humanDrawn && getMyHand().length > 0) {
+    const hand = newState.hands[myPlayerId];
+    const di = Math.floor(Math.random() * hand.length);
+    const disc = hand.splice(di, 1)[0];
+    newState.discard = [...(newState.discard||[]), disc];
+  }
+  newState.currentTurn = (newState.currentTurn + 1) % newState.players.length;
+  newState.round = newState.currentTurn===0 ? (newState.round||1)+1 : (newState.round||1);
+  newState.log = [...(newState.log||[]), '⏰ Time up, turn passed.'];
+  humanDrawn = false; sentenceTiles = [];
+  await roomRef.child('gameState').set(newState);
+}
+
+function findPossibleSentences() {
+  var hand = getMyHand();
+  var handWords = hand.map(function(t){ return t.w; });
+  var results = [];
+  VALID_SENTENCES.forEach(function(s) {
+    var needed = s.ws.slice();
+    var avail = handWords.slice();
+    var ok = true;
+    for(var i = 0; i < needed.length; i++){
+      var idx = avail.indexOf(needed[i]);
+      if(idx === -1){ var ji = avail.indexOf('JOKER'); if(ji !== -1){ avail.splice(ji,1); } else { ok = false; break; } }
+      else { avail.splice(idx, 1); }
+    }
+    if(ok) results.push({ s: s });
+  });
+  results.sort(function(a,b){ return (b.s.pts||0)-(a.s.pts||0); });
+  return results;
+}
+
+function suggestBest() {
+  if(!isMyTurn() || !humanDrawn){ showToast('Draw a tile first!', 2000); return; }
+  var hand = getMyHand();
+  var results = findPossibleSentences();
+  if(results.length > 0){
+    var best = results[0].s;
+    sentenceTiles = [];
+    var avail = hand.slice();
+    best.ws.forEach(function(word){
+      var idx = avail.findIndex(function(t){ return t.w===word; });
+      if(idx===-1) idx = avail.findIndex(function(t){ return t.w==='JOKER'; });
+      if(idx!==-1){ sentenceTiles.push(avail[idx]); avail.splice(idx,1); }
+    });
+    renderGame();
+    showToast('⚡ Sentence ready! +' + (best.pts||0) + ' pts', 2000);
+    return;
+  }
+  showToast('No valid sentence in hand 😔', 2500);
+}
+
+function toggleSuggest() {
+  var panel = document.getElementById('suggestPanel');
+  if(!panel) return;
+  if(panel.style.display === 'block'){ panel.style.display = 'none'; return; }
+  if(!isMyTurn() || !humanDrawn){ showToast('Draw a tile first!', 2000); return; }
+  var results = findPossibleSentences();
+  var list = document.getElementById('suggestList');
+  if(results.length === 0){
+    list.innerHTML = '<div style="color:rgba(245,230,200,.3);font-style:italic;font-size:12px;padding:6px;">No matching sentence 😔</div>';
+  } else {
+    list.innerHTML = results.slice(0,6).map(function(r, i){
+      var cls = i===0 ? 'suggest-item suggest-best' : 'suggest-item';
+      return '<div class="' + cls + '" onclick="applySuggest(' + JSON.stringify(r.s.ws) + ')">' +
+        '<span>' + r.s.ws.join(' ') + '</span>' +
+        '<span class="si-tr">' + (r.s.tr||'') + ' +' + (r.s.pts||0) + 'p</span>' +
+        '</div>';
+    }).join('');
+  }
+  panel.style.display = 'block';
+}
+
+function applySuggest(ws) {
+  sentenceTiles = [];
+  var hand = getMyHand();
+  var avail = hand.slice();
+  ws.forEach(function(word){
+    var idx = avail.findIndex(function(t){ return t.w === word; });
+    if(idx === -1) idx = avail.findIndex(function(t){ return t.w === 'JOKER'; });
+    if(idx !== -1){ sentenceTiles.push(avail[idx]); avail.splice(idx, 1); }
+  });
+  document.getElementById('suggestPanel').style.display = 'none';
+  renderGame();
+  showToast('💡 Cümle seçildi!', 1500);
+}
