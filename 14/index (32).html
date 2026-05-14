@@ -1,0 +1,3872 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#1a1a1e">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="7 Words to Sentence">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>7 Words to Sentence 🎴</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js">
+// ===== TOUCH DRAG FOR MOBILE =====
+var touchDragSrc = null;
+var touchClone = null;
+
+function initTouchDrag() {
+  document.addEventListener('touchstart', function(e) {
+    var tile = e.target.closest('.rack-slot .tile');
+    if (!tile) return;
+    var slot = tile.closest('.rack-slot');
+    if (!slot) return;
+    touchDragSrc = parseInt(slot.dataset.slot);
+    
+    // Create ghost clone
+    touchClone = tile.cloneNode(true);
+    touchClone.style.cssText = 'position:fixed;z-index:9999;pointer-events:none;opacity:0.8;transform:scale(1.1);transition:none;';
+    var rect = tile.getBoundingClientRect();
+    touchClone.style.width = rect.width + 'px';
+    touchClone.style.height = rect.height + 'px';
+    touchClone.style.left = rect.left + 'px';
+    touchClone.style.top = rect.top + 'px';
+    document.body.appendChild(touchClone);
+    tile.style.opacity = '0.3';
+  }, {passive: true});
+
+  document.addEventListener('touchmove', function(e) {
+    if (!touchClone) return;
+    e.preventDefault();
+    var touch = e.touches[0];
+    touchClone.style.left = (touch.clientX - parseInt(touchClone.style.width)/2) + 'px';
+    touchClone.style.top = (touch.clientY - parseInt(touchClone.style.height)/2) + 'px';
+    
+    // Highlight slot under finger
+    touchClone.style.display = 'none';
+    var el = document.elementFromPoint(touch.clientX, touch.clientY);
+    touchClone.style.display = '';
+    document.querySelectorAll('.rack-slot.drag-over').forEach(function(s){ s.classList.remove('drag-over'); });
+    var overSlot = el ? el.closest('.rack-slot') : null;
+    if (overSlot) overSlot.classList.add('drag-over');
+  }, {passive: false});
+
+  document.addEventListener('touchend', function(e) {
+    if (!touchClone || touchDragSrc === null) return;
+    var touch = e.changedTouches[0];
+    
+    // Find target slot
+    touchClone.style.display = 'none';
+    var el = document.elementFromPoint(touch.clientX, touch.clientY);
+    touchClone.style.display = '';
+    
+    var overSlot = el ? el.closest('.rack-slot') : null;
+    if (overSlot && parseInt(overSlot.dataset.slot) !== touchDragSrc) {
+      var destSlot = parseInt(overSlot.dataset.slot);
+      var tmp = rackSlots[touchDragSrc];
+      rackSlots[touchDragSrc] = rackSlots[destSlot];
+      rackSlots[destSlot] = tmp;
+      renderMyTiles();
+    } else {
+      // Restore opacity
+      document.querySelectorAll('.rack-slot .tile').forEach(function(t){ t.style.opacity = ''; });
+    }
+    
+    document.querySelectorAll('.rack-slot.drag-over').forEach(function(s){ s.classList.remove('drag-over'); });
+    touchClone.remove();
+    touchClone = null;
+    touchDragSrc = null;
+  }, {passive: true});
+}
+
+
+// Init touch drag on load
+window.addEventListener('load', initTouchDrag);
+</script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js">
+// ===== TOUCH DRAG FOR MOBILE =====
+var touchDragSrc = null;
+var touchClone = null;
+
+function initTouchDrag() {
+  document.addEventListener('touchstart', function(e) {
+    var tile = e.target.closest('.rack-slot .tile');
+    if (!tile) return;
+    var slot = tile.closest('.rack-slot');
+    if (!slot) return;
+    touchDragSrc = parseInt(slot.dataset.slot);
+    
+    // Create ghost clone
+    touchClone = tile.cloneNode(true);
+    touchClone.style.cssText = 'position:fixed;z-index:9999;pointer-events:none;opacity:0.8;transform:scale(1.1);transition:none;';
+    var rect = tile.getBoundingClientRect();
+    touchClone.style.width = rect.width + 'px';
+    touchClone.style.height = rect.height + 'px';
+    touchClone.style.left = rect.left + 'px';
+    touchClone.style.top = rect.top + 'px';
+    document.body.appendChild(touchClone);
+    tile.style.opacity = '0.3';
+  }, {passive: true});
+
+  document.addEventListener('touchmove', function(e) {
+    if (!touchClone) return;
+    e.preventDefault();
+    var touch = e.touches[0];
+    touchClone.style.left = (touch.clientX - parseInt(touchClone.style.width)/2) + 'px';
+    touchClone.style.top = (touch.clientY - parseInt(touchClone.style.height)/2) + 'px';
+    
+    // Highlight slot under finger
+    touchClone.style.display = 'none';
+    var el = document.elementFromPoint(touch.clientX, touch.clientY);
+    touchClone.style.display = '';
+    document.querySelectorAll('.rack-slot.drag-over').forEach(function(s){ s.classList.remove('drag-over'); });
+    var overSlot = el ? el.closest('.rack-slot') : null;
+    if (overSlot) overSlot.classList.add('drag-over');
+  }, {passive: false});
+
+  document.addEventListener('touchend', function(e) {
+    if (!touchClone || touchDragSrc === null) return;
+    var touch = e.changedTouches[0];
+    
+    // Find target slot
+    touchClone.style.display = 'none';
+    var el = document.elementFromPoint(touch.clientX, touch.clientY);
+    touchClone.style.display = '';
+    
+    var overSlot = el ? el.closest('.rack-slot') : null;
+    if (overSlot && parseInt(overSlot.dataset.slot) !== touchDragSrc) {
+      var destSlot = parseInt(overSlot.dataset.slot);
+      var tmp = rackSlots[touchDragSrc];
+      rackSlots[touchDragSrc] = rackSlots[destSlot];
+      rackSlots[destSlot] = tmp;
+      renderMyTiles();
+    } else {
+      // Restore opacity
+      document.querySelectorAll('.rack-slot .tile').forEach(function(t){ t.style.opacity = ''; });
+    }
+    
+    document.querySelectorAll('.rack-slot.drag-over').forEach(function(s){ s.classList.remove('drag-over'); });
+    touchClone.remove();
+    touchClone = null;
+    touchDragSrc = null;
+  }, {passive: true});
+}
+
+
+// Init touch drag on load
+window.addEventListener('load', initTouchDrag);
+</script>
+<!-- QR Code -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js">
+// ===== TOUCH DRAG FOR MOBILE =====
+var touchDragSrc = null;
+var touchClone = null;
+
+function initTouchDrag() {
+  document.addEventListener('touchstart', function(e) {
+    var tile = e.target.closest('.rack-slot .tile');
+    if (!tile) return;
+    var slot = tile.closest('.rack-slot');
+    if (!slot) return;
+    touchDragSrc = parseInt(slot.dataset.slot);
+    
+    // Create ghost clone
+    touchClone = tile.cloneNode(true);
+    touchClone.style.cssText = 'position:fixed;z-index:9999;pointer-events:none;opacity:0.8;transform:scale(1.1);transition:none;';
+    var rect = tile.getBoundingClientRect();
+    touchClone.style.width = rect.width + 'px';
+    touchClone.style.height = rect.height + 'px';
+    touchClone.style.left = rect.left + 'px';
+    touchClone.style.top = rect.top + 'px';
+    document.body.appendChild(touchClone);
+    tile.style.opacity = '0.3';
+  }, {passive: true});
+
+  document.addEventListener('touchmove', function(e) {
+    if (!touchClone) return;
+    e.preventDefault();
+    var touch = e.touches[0];
+    touchClone.style.left = (touch.clientX - parseInt(touchClone.style.width)/2) + 'px';
+    touchClone.style.top = (touch.clientY - parseInt(touchClone.style.height)/2) + 'px';
+    
+    // Highlight slot under finger
+    touchClone.style.display = 'none';
+    var el = document.elementFromPoint(touch.clientX, touch.clientY);
+    touchClone.style.display = '';
+    document.querySelectorAll('.rack-slot.drag-over').forEach(function(s){ s.classList.remove('drag-over'); });
+    var overSlot = el ? el.closest('.rack-slot') : null;
+    if (overSlot) overSlot.classList.add('drag-over');
+  }, {passive: false});
+
+  document.addEventListener('touchend', function(e) {
+    if (!touchClone || touchDragSrc === null) return;
+    var touch = e.changedTouches[0];
+    
+    // Find target slot
+    touchClone.style.display = 'none';
+    var el = document.elementFromPoint(touch.clientX, touch.clientY);
+    touchClone.style.display = '';
+    
+    var overSlot = el ? el.closest('.rack-slot') : null;
+    if (overSlot && parseInt(overSlot.dataset.slot) !== touchDragSrc) {
+      var destSlot = parseInt(overSlot.dataset.slot);
+      var tmp = rackSlots[touchDragSrc];
+      rackSlots[touchDragSrc] = rackSlots[destSlot];
+      rackSlots[destSlot] = tmp;
+      renderMyTiles();
+    } else {
+      // Restore opacity
+      document.querySelectorAll('.rack-slot .tile').forEach(function(t){ t.style.opacity = ''; });
+    }
+    
+    document.querySelectorAll('.rack-slot.drag-over').forEach(function(s){ s.classList.remove('drag-over'); });
+    touchClone.remove();
+    touchClone = null;
+    touchDragSrc = null;
+  }, {passive: true});
+}
+
+
+// Init touch drag on load
+window.addEventListener('load', initTouchDrag);
+</script>
+
+<style>
+:root {
+  --wood-dark: #2d1005;
+  --wood-mid: #5c2d0a;
+  --felt: #1a4a1a;
+  --gold: #d4a017;
+  --gold-light: #f0c040;
+  --cream: #fdf6e3;
+  --tile-bg: #fdf0d0;
+  --red-t: #c0392b;
+  --blue-t: #1a5276;
+  --black-t: #1a1a1a;
+  --yellow-t: #7d6608;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: 'Crimson Text', Georgia, serif;
+  background: 
+    radial-gradient(ellipse at 20% 80%, rgba(101,67,33,0.4) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(139,90,43,0.3) 0%, transparent 50%),
+    linear-gradient(160deg, #0d0602 0%, #1a0a04 30%, #2a1208 60%, #1a0a04 100%);
+  min-height: 100vh;
+  color: var(--cream);
+  overflow-x: hidden;
+}
+
+/* Nostalgic wood grain texture on game screen */
+#gameScreen {
+  background:
+    repeating-linear-gradient(
+      92deg,
+      transparent,
+      transparent 2px,
+      rgba(101,67,33,0.03) 2px,
+      rgba(101,67,33,0.03) 4px
+    ),
+    repeating-linear-gradient(
+      180deg,
+      transparent,
+      transparent 40px,
+      rgba(0,0,0,0.04) 40px,
+      rgba(0,0,0,0.04) 41px
+    ),
+    linear-gradient(160deg, #1a1a1e, #222228, #1a1a1e);
+}
+
+/* ===================== SCREENS ===================== */
+.screen { display: none; min-height: 100vh; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+.screen.active { display: flex; }
+
+/* ===================== CONFIG BANNER ===================== */
+#configBanner {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 999;
+  background: linear-gradient(90deg, #c0392b, #922b21);
+  color: white; text-align: center; padding: 10px 16px; font-size: 14px;
+  display: none;
+}
+#configBanner a { color: #f9e79f; font-weight: bold; }
+
+/* ===================== MENU ===================== */
+#menuScreen { background: radial-gradient(ellipse at 50% 20%, rgba(212,160,23,0.12) 0%, transparent 60%); }
+
+.brand { text-align: center; margin-bottom: 40px; }
+.brand-tiles { display: flex; gap: 5px; justify-content: center; margin-bottom: 16px; }
+.brand-tile {
+  width: 48px; height: 62px;
+  background: linear-gradient(145deg, #fdf0d0, #e8c878);
+  border: 2px solid var(--gold); border-radius: 6px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  animation: float 3s ease-in-out infinite;
+}
+.brand-tile:nth-child(2){animation-delay:.2s}.brand-tile:nth-child(3){animation-delay:.4s}.brand-tile:nth-child(4){animation-delay:.6s}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+.bt-word{font-family:'Playfair Display',serif;font-size:9px;font-weight:900;letter-spacing:.3px}
+.bt-word.r{color:var(--red-t)}.bt-word.b{color:var(--blue-t)}.bt-word.k{color:var(--black-t)}.bt-word.y{color:var(--yellow-t)}
+
+.title { font-family:'Playfair Display',serif; font-size: clamp(32px,8vw,60px); font-weight:900; color:var(--gold-light); text-shadow:0 0 30px rgba(212,160,23,.5); letter-spacing:4px; }
+.subtitle { font-size:12px; color:rgba(240,192,64,.6); letter-spacing:6px; text-transform:uppercase; margin-top:4px; }
+
+.card {
+  background: linear-gradient(145deg, rgba(212,160,23,.08), rgba(45,16,5,.9));
+  border: 1px solid rgba(212,160,23,.25); border-radius: 16px;
+  padding: 32px; width: min(420px, 95vw);
+  box-shadow: 0 20px 60px rgba(0,0,0,.6);
+}
+
+.card h2 { font-family:'Playfair Display',serif; color:var(--gold-light); font-size:20px; margin-bottom:24px; text-align:center; }
+
+.input-group { margin-bottom:14px; }
+.input-group label { display:block; color:rgba(240,192,64,.7); font-size:12px; letter-spacing:2px; text-transform:uppercase; margin-bottom:6px; }
+.input-group input, .input-group select {
+  width:100%; padding:12px 14px;
+  background:rgba(0,0,0,.4); border:1px solid rgba(212,160,23,.25);
+  border-radius:8px; color:var(--cream); font-family:'Crimson Text',serif; font-size:16px;
+  outline:none; transition:border-color .2s;
+}
+.input-group input:focus, .input-group select:focus { border-color:var(--gold); }
+.input-group input::placeholder { color:rgba(245,230,200,.3); }
+
+.divider { display:flex; align-items:center; gap:12px; margin:20px 0; }
+.divider::before,.divider::after { content:''; flex:1; height:1px; background:rgba(212,160,23,.2); }
+.divider span { color:rgba(240,192,64,.5); font-size:12px; letter-spacing:2px; }
+
+.btn { width:100%; padding:14px; border:none; border-radius:10px; font-family:'Playfair Display',serif; font-size:18px; font-weight:700; cursor:pointer; letter-spacing:1px; transition:all .15s; }
+.btn:active { transform:scale(.98); }
+.btn-gold { background:linear-gradient(135deg,#b8860b,#d4a017,#f0c040); color:#2d1005; box-shadow:0 4px 20px rgba(212,160,23,.4); margin-bottom:10px; }
+.btn-gold:hover { filter:brightness(1.1); transform:translateY(-1px); box-shadow:0 6px 28px rgba(212,160,23,.5); }
+.btn-outline { background:transparent; border:1px solid rgba(212,160,23,.3); color:rgba(240,192,64,.7); font-size:14px; padding:10px; }
+.btn-outline:hover { background:rgba(212,160,23,.1); color:var(--gold-light); }
+.btn-sm { width:auto; padding:8px 20px; font-size:14px; }
+.btn-red { background:linear-gradient(135deg,#922b21,#c0392b); color:white; }
+.btn-green { background:linear-gradient(135deg,#1a7a1a,#27ae60); color:white; }
+.btn-blue { background:linear-gradient(135deg,#1a5276,#2e86c1); color:white; }
+
+/* ===================== LOBBY ===================== */
+#lobbyScreen { background: radial-gradient(ellipse at 50% 30%, rgba(212,160,23,.1) 0%, transparent 60%); }
+
+.lobby-card { background:linear-gradient(145deg,rgba(212,160,23,.08),rgba(45,16,5,.9)); border:1px solid rgba(212,160,23,.25); border-radius:16px; padding:24px; width:min(500px,95vw); }
+
+.room-code-display { text-align:center; margin-bottom:20px; }
+.room-label { color:rgba(240,192,64,.6); font-size:11px; letter-spacing:3px; text-transform:uppercase; margin-bottom:6px; }
+.room-code { font-family:'Playfair Display',serif; font-size:48px; font-weight:900; color:var(--gold-light); letter-spacing:8px; text-shadow:0 0 20px rgba(212,160,23,.4); }
+
+#qrContainer { display:flex; justify-content:center; margin:16px 0; }
+#qrContainer canvas, #qrContainer img { border-radius:8px; border:3px solid rgba(212,160,23,.4); padding:8px; background:white; }
+
+.players-list { margin-bottom:20px; }
+.players-list h3 { color:var(--gold); font-size:14px; letter-spacing:2px; margin-bottom:10px; text-align:center; }
+.player-slot {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 14px; border-radius:8px; margin-bottom:6px;
+  background:rgba(0,0,0,.3); border:1px solid rgba(212,160,23,.1);
+  transition:all .3s;
+}
+.player-slot.filled { border-color:rgba(212,160,23,.3); background:rgba(212,160,23,.05); }
+.player-slot.me { border-color:var(--gold); }
+.slot-num { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
+.slot-name { flex:1; font-size:15px; }
+.slot-empty { color:rgba(245,230,200,.3); font-style:italic; font-size:14px; }
+.slot-badge { font-size:11px; color:var(--gold); background:rgba(212,160,23,.15); border:1px solid rgba(212,160,23,.3); border-radius:4px; padding:2px 8px; }
+.waiting-dots { display:inline-flex; gap:3px; }
+.wd { width:5px;height:5px;background:var(--gold);border-radius:50%;animation:aiDot 1s ease-in-out infinite; }
+.wd:nth-child(2){animation-delay:.2s}.wd:nth-child(3){animation-delay:.4s}
+@keyframes aiDot{0%,80%,100%{transform:scale(.5);opacity:.4}40%{transform:scale(1);opacity:1}}
+
+.lobby-status { text-align:center; color:rgba(240,192,64,.6); font-size:13px; margin-bottom:16px; font-style:italic; }
+
+/* ===================== GAME ===================== */
+#gameScreen { padding:0; justify-content:flex-start; }
+
+.topbar {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px;
+  background: linear-gradient(90deg, rgba(18,18,22,0.98), rgba(28,28,34,0.98), rgba(18,18,22,0.98));
+  border-bottom: 2px solid rgba(139,105,20,0.4);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.6);
+  width:100%; flex-shrink:0; position:sticky; top:0; z-index:10;
+}
+.topbar-title { font-family:'Playfair Display',serif; color:var(--gold-light); font-size:16px; letter-spacing:2px; }
+.turn-badge { font-family:'Playfair Display',serif; font-size:12px; color:var(--gold); background:rgba(212,160,23,.15); border:1px solid rgba(212,160,23,.3); border-radius:20px; padding:4px 12px; }
+
+
+/* ===== 4-SIDED OKEY LAYOUT ===== */
+.okey-layout {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  width: 100%;
+  height: calc(100vh - 44px);
+  overflow: hidden;
+  gap: 0;
+}
+
+/* North/South player sides */
+.player-side {
+  background: rgba(0,0,0,0.35);
+  border: 1px solid rgba(212,160,23,0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 4px 8px;
+  position: relative;
+  flex-shrink: 0;
+}
+.player-side.north { 
+  border-bottom: 2px solid rgba(139,105,20,0.3);
+  min-height: 72px;
+}
+.player-side.west, .player-side.east {
+  flex-direction: column;
+  width: 68px;
+  min-width: 68px;
+  justify-content: center;
+  gap: 2px;
+  border-right: 2px solid rgba(139,105,20,0.2);
+}
+.player-side.east { border-right: none; border-left: 2px solid rgba(139,105,20,0.2); }
+
+/* Side player label */
+.side-label {
+  font-family: 'Playfair Display', serif;
+  font-size: 10px;
+  color: var(--gold);
+  letter-spacing: 1px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 60px;
+  padding: 2px 4px;
+}
+.side-score { font-size: 9px; color: rgba(212,160,23,0.5); text-align:center; }
+.side-active { background: rgba(212,160,23,0.1) !important; border-color: rgba(212,160,23,0.5) !important; }
+.side-tiles-h { display:flex; flex-wrap:nowrap; gap:2px; overflow:hidden; align-items:center; }
+.side-tiles-v { display:flex; flex-direction:column; gap:2px; align-items:center; overflow:hidden; }
+
+/* Tile back - small for opponents */
+.tile-back-sm {
+  width: 22px; height: 30px;
+  background: linear-gradient(145deg, #fdfaf0, #f0e4a8, #ddd090);
+  border-radius: 3px;
+  border: 1px solid #c8a830;
+  box-shadow: 1px 2px 3px rgba(0,0,0,0.4);
+  flex-shrink: 0;
+}
+
+/* Middle row */
+.table-middle {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Center table */
+.okey-table {
+  flex: 1;
+  position: relative;
+  background: radial-gradient(ellipse at 50% 40%, rgba(34,85,34,0.9) 0%, rgba(20,60,20,0.95) 50%, rgba(10,40,10,1) 100%);
+  border-left: 4px solid #3d1f05;
+  border-right: 4px solid #3d1f05;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  overflow: hidden;
+}
+
+/* Center controls row */
+.center-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Pool tiles - ivory */
+.pool-tile {
+  background: linear-gradient(145deg, #fdfaf0, #f5e8b0) !important;
+  border: 1.5px solid #c8a830 !important;
+  box-shadow: 2px 3px 6px rgba(0,0,0,0.5) !important;
+}
+
+/* My rack - bottom */
+.my-hand {
+  background: linear-gradient(180deg, #6b3a10 0%, #4a2408 40%, #3a1a05 100%);
+  border-top: 4px solid #a07830;
+  flex-shrink: 0;
+  position: relative;
+}
+.my-hand::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent 5%, #d4a017 20%, #f0c040 50%, #d4a017 80%, transparent 95%);
+}
+.mh-header {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 10px;
+  background: linear-gradient(180deg, rgba(0,0,0,.4) 0%, transparent 100%);
+  border-bottom: 1px solid rgba(212,160,23,.15);
+}
+.mh-label { font-family:'Playfair Display',serif; color:var(--gold); font-size:11px; letter-spacing:1px; }
+.mh-score { margin-left:auto; color:var(--gold); font-size:11px; }
+.mh-hint-btn {
+  background: rgba(212,160,23,.15); border: 1px solid rgba(212,160,23,.3);
+  color: var(--gold); border-radius: 5px; padding: 2px 7px;
+  font-size: 10px; cursor: pointer; font-family:'Playfair Display',serif;
+  transition: all .15s; white-space: nowrap;
+}
+.mh-hint-btn:hover { background: rgba(212,160,23,.3); }
+
+/* Rack rows */
+.rack-rows { 
+  display: flex; flex-direction: row; gap: 4px; 
+  padding: 4px 6px 6px; overflow-x: auto;
+  align-items: flex-end;
+}
+.rack-row {
+  display: flex; gap: 2px; align-items: flex-end;
+  background: linear-gradient(180deg, rgba(0,0,0,.25) 0%, rgba(0,0,0,.4) 100%);
+  border-radius: 4px; padding: 3px 4px 5px;
+  border-bottom: 3px solid rgba(0,0,0,.5);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,.3);
+}
+
+/* Suggest */
+.suggest-panel {
+  background: rgba(0,0,0,.5); border: 1px solid rgba(212,160,23,.2);
+  padding: 6px 10px; display: none; max-height: 100px; overflow-y: auto;
+}
+.suggest-panel.open { display: block; }
+.suggest-list { display: flex; flex-direction: column; gap: 3px; }
+.suggest-item {
+  background: rgba(212,160,23,.07); border: 1px solid rgba(212,160,23,.2);
+  border-radius: 4px; padding: 4px 8px; cursor: pointer;
+  font-family:'Playfair Display',serif; font-size:11px; color: var(--gold-light);
+  transition: all .15s; display: flex; justify-content: space-between;
+}
+.suggest-item:hover { background: rgba(212,160,23,.2); }
+.suggest-item .si-tr { font-size:10px; color:rgba(245,230,200,.5); font-style:italic; }
+.suggest-best { background: rgba(40,167,69,.15); border-color: rgba(40,167,69,.4); color: #5eff8a; }
+
+/* Sentence zone */
+.sentence-zone {
+  background: linear-gradient(135deg, rgba(20,60,20,0.5), rgba(10,40,10,0.6));
+  border: 1px solid rgba(212,160,23,0.2);
+  border-radius: 8px; padding: 6px 10px;
+  flex-shrink: 0;
+}
+.sz-label { color:rgba(150,255,150,.5); font-size:9px; letter-spacing:2px; text-transform:uppercase; margin-bottom:4px; }
+.sz-tiles { display:flex; flex-wrap:wrap; gap:3px; min-height:44px; align-items:center; justify-content:flex-start; }
+.sz-hint { color:rgba(150,255,150,.35); font-size:11px; font-style:italic; }
+.sz-result { font-family:'Playfair Display',serif; font-size:11px; margin-top:4px; padding:3px 8px; border-radius:4px; }
+.sz-result.valid { background:rgba(40,167,69,.2); border:1px solid rgba(40,167,69,.4); color:#5eff8a; }
+.sz-result.invalid { background:rgba(220,53,69,.2); border:1px solid rgba(220,53,69,.4); color:#ff6b7a; }
+
+/* Pool & controls */
+.pool-stack { position:relative; width:36px; height:48px; cursor:pointer; flex-shrink:0; }
+.pool-stack .tile { position:absolute; width:36px; height:48px; }
+.pool-count { color:var(--gold); font-size:11px; flex-shrink:0; }
+.discard-area { flex:1; display:flex; gap:2px; overflow:hidden; align-items:center; }
+.action-col { display:flex; flex-direction:column; gap:4px; flex-shrink:0; }
+.abtn { padding:5px 10px; border-radius:6px; border:none; cursor:pointer; font-family:'Playfair Display',serif; font-size:11px; font-weight:700; transition:all .15s; white-space:nowrap; }
+.abtn:disabled { opacity:.35; cursor:not-allowed; }
+.abtn-draw { background:linear-gradient(135deg,#1a5276,#2e86c1); color:white; }
+.abtn-play { background:linear-gradient(135deg,#1a7a1a,#27ae60); color:white; }
+.abtn-discard { background:linear-gradient(135deg,#7d1f1f,#c0392b); color:white; }
+
+/* Log */
+.game-log { background:rgba(0,0,0,.4); border:1px solid rgba(255,255,255,.05); border-radius:6px; padding:4px 8px; max-height:44px; overflow-y:auto; flex-shrink:0; }
+.log-e { color:rgba(245,230,200,.55); font-size:10px; line-height:1.5; }
+.log-e.hi { color:var(--gold-light); font-weight:600; }
+
+/* Table ornament */
+.table-ornament {
+  position: absolute; top:50%; left:50%;
+  transform: translate(-50%,-50%);
+  font-size:28px; opacity:0.07; pointer-events:none; z-index:0;
+}
+
+/* Drag to reorder rack */
+.tile.dragging-rack { opacity:0.4; transform:scale(0.9); }
+.tile.drag-over-rack { border-color:var(--gold-light) !important; transform:translateY(-8px) scale(1.05); }
+
+@media(max-width:600px){
+  .tile { width:40px; height:52px; }
+  .tile-w { font-size:8px; }
+  .tile-t { font-size:6px; }
+  .player-side.west, .player-side.east { width:36px; min-width:36px; }
+  .tile-back-sm { width:14px; height:18px; }
+  .abtn { padding:4px 6px; font-size:10px; }
+  .rack-row { gap: 1px; padding: 2px 3px 4px; }
+  .rack-slot { width:42px !important; min-width:42px !important; height:54px !important; margin:0 1px !important; }
+  .rack-slot .tile { width:40px !important; height:52px !important; }
+  .okey-table { padding:6px !important; margin:3px !important; }
+  .sentence-zone { min-height:40px !important; padding:4px !important; }
+  .topbar { padding:4px 8px !important; }
+  .topbar-title { font-size:12px !important; }
+}
+@media(max-width:380px){
+  .tile { width:34px; height:44px; }
+  .tile-w { font-size:7px; letter-spacing:-0.3px; }
+  .tile-t { font-size:5.5px; }
+  .rack-slot { width:36px !important; min-width:36px !important; height:46px !important; }
+  .rack-slot .tile { width:34px !important; height:44px !important; }
+}
+
+
+/* ===== TURKISH OKEY TABLE ===== */
+.okey-table {
+  position: relative;
+  background:
+    radial-gradient(ellipse at 50% 40%, rgba(58,64,70,0.95) 0%, rgba(42,46,52,0.98) 50%, rgba(28,32,36,1) 100%);
+  border-radius: 24px;
+  border: 6px solid transparent;
+  background-clip: padding-box;
+  box-shadow:
+    0 0 0 6px #3d1f05,
+    0 0 0 10px #5c2d0a,
+    0 0 0 14px #8b4513,
+    0 0 0 18px #5c2d0a,
+    inset 0 2px 20px rgba(0,0,0,0.5),
+    0 20px 60px rgba(0,0,0,0.8);
+  padding: 14px;
+  margin: 6px;
+  flex: 1;
+}
+
+/* Wood ring decoration */
+.okey-table::before {
+  content: '';
+  position: absolute;
+  inset: -20px;
+  border-radius: 30px;
+  background: 
+    repeating-linear-gradient(
+      45deg,
+      #3d1f05,
+      #3d1f05 3px,
+      #5c2d0a 3px,
+      #5c2d0a 6px,
+      #4a2408 6px,
+      #4a2408 9px
+    );
+  z-index: -1;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+}
+
+/* Felt texture overlay */
+.okey-table::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 18px;
+  background: 
+    repeating-linear-gradient(
+      0deg, transparent, transparent 3px,
+      rgba(0,0,0,0.03) 3px, rgba(0,0,0,0.03) 4px
+    ),
+    repeating-linear-gradient(
+      90deg, transparent, transparent 3px,
+      rgba(0,0,0,0.02) 3px, rgba(0,0,0,0.02) 4px
+    );
+  pointer-events: none;
+  z-index: 0;
+}
+
+.okey-table > * { position: relative; z-index: 1; }
+
+/* Center ornament */
+.table-ornament {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  border: 2px solid rgba(212,160,23,0.15);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 32px; opacity: 0.12;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Tile rack (my hand area) */
+.my-hand {
+  background: 
+    linear-gradient(180deg, #5c2d0a 0%, #3d1f05 30%, #2d1205 100%);
+  border: 3px solid #8b6914;
+  border-radius: 10px;
+  padding: 10px 10px 14px;
+  flex-shrink: 0;
+  box-shadow:
+    0 -4px 12px rgba(0,0,0,0.5),
+    inset 0 2px 8px rgba(0,0,0,0.4),
+    inset 0 -2px 4px rgba(212,160,23,0.1);
+  position: relative;
+}
+
+/* Rack groove */
+.my-hand::before {
+  content: '';
+  position: absolute;
+  bottom: 8px; left: 10px; right: 10px;
+  height: 4px;
+  background: linear-gradient(90deg, transparent, rgba(0,0,0,0.4), rgba(0,0,0,0.5), rgba(0,0,0,0.4), transparent);
+  border-radius: 2px;
+}
+
+/* Other players */
+/* opponents now use side-panel layout */
+.tile-back {
+  width:32px; height:42px;
+  background: linear-gradient(145deg, #fdfaf0, #f0e4a8, #ddd090);
+  border-radius: 5px;
+  border: 1.5px solid #c8a830;
+  flex-shrink: 0;
+  box-shadow: 2px 3px 6px rgba(0,0,0,0.5), inset 0 1px 2px rgba(255,255,255,0.8);
+  position: relative;
+}
+.tile-back::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 3px;
+  border: 1px solid rgba(180,140,20,0.3);
+  background: repeating-linear-gradient(
+    45deg,
+    transparent, transparent 4px,
+    rgba(180,140,20,0.08) 4px, rgba(180,140,20,0.08) 5px
+  );
+}
+
+/* Sentence zone */
+.sentence-zone {
+  background: linear-gradient(135deg, rgba(36,42,48,0.75), rgba(24,28,34,0.85));
+  border: 2px solid rgba(212,160,23,0.25);
+  border-radius: 12px; padding: 12px;
+  box-shadow: inset 0 2px 10px rgba(0,0,0,0.3), 0 2px 8px rgba(0,0,0,0.3);
+}
+.sz-label { color:rgba(150,255,150,.6); font-size:10px; letter-spacing:3px; text-transform:uppercase; text-align:center; margin-bottom:8px; }
+.sz-tiles { display:flex; flex-wrap:wrap; gap:4px; min-height:52px; align-items:center; justify-content:center; }
+.sz-hint { color:rgba(150,255,150,.4); font-size:13px; font-style:italic; letter-spacing:.5px; }
+.tile.dragging { opacity:0.4; transform:scale(0.95); }
+.tile.drag-over { border-color:var(--gold-light) !important; box-shadow:0 0 16px rgba(212,160,23,.8) !important; transform:translateY(-6px) scale(1.05); }
+.sz-tiles.drag-active { background:rgba(212,160,23,.1); border:2px dashed rgba(212,160,23,.5); border-radius:8px; }
+.sz-tiles { display:flex; flex-wrap:wrap; gap:6px; min-height:60px; align-items:center; justify-content:center; padding:6px; transition:background .2s; }
+.drag-ghost { 
+  position:fixed; z-index:9999; pointer-events:none;
+  opacity:0.85; transform:rotate(5deg) scale(1.1);
+  box-shadow:0 12px 32px rgba(0,0,0,0.6);
+}
+.sz-result { text-align:center; padding:6px 10px; border-radius:6px; font-family:'Playfair Display',serif; font-size:13px; margin-top:6px; }
+.sz-result.valid { background:rgba(40,167,69,.2); border:1px solid rgba(40,167,69,.4); color:#5eff8a; }
+.sz-result.invalid { background:rgba(220,53,69,.2); border:1px solid rgba(220,53,69,.4); color:#ff6b7a; }
+
+/* Pool & actions */
+.pool-row { display:flex; align-items:center; gap:8px; }
+.pool-stack { position:relative; width:46px; height:58px; cursor:pointer; flex-shrink:0; }
+.pool-stack .tile { position:absolute; }
+.pool-count { color:var(--gold); font-size:12px; flex-shrink:0; }
+.discard-area { flex:1; display:flex; gap:3px; overflow:hidden; align-items:center; }
+.action-col { display:flex; flex-direction:column; gap:5px; flex-shrink:0; }
+
+/* Tiles */
+.tile {
+  width:72px; height:92px;
+  background: #ffffff;
+  border: 1.5px solid #8b1422;
+  border-radius: 8px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  cursor:pointer; flex-shrink:0;
+  box-shadow: 2px 5px 10px rgba(0,0,0,0.45), inset 0 1px 3px rgba(255,255,255,1);
+  transition: transform .15s, box-shadow .15s;
+  position: relative;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+/* Bordo top bar */
+.tile::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 6px;
+  background: #8b1422;
+  border-radius: 5px 5px 0 0;
+}
+/* Bordo bottom bar */
+.tile::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 6px;
+  background: #8b1422;
+  border-radius: 0 0 5px 5px;
+}
+.tile:hover { transform:translateY(-3px); box-shadow:2px 8px 16px rgba(0,0,0,.5); }
+.tile.drag-over { border-color: #d4a017 !important; box-shadow: 0 0 12px rgba(212,160,23,0.6) !important; transform: scale(1.05); }
+.tile.selected { transform:translateY(-12px); box-shadow:0 12px 24px rgba(139,20,34,.5); border-color:#8b1422; }
+.tile.joker-tile { background:#8b1422 !important; border-color:#5a0010 !important; }
+.tile.joker-tile::before, .tile.joker-tile::after { background:#5a0010 !important; }
+.tile-w { font-size:12px; font-weight:900; text-align:center; line-height:1.1; padding:0 4px; letter-spacing:0.3px; font-family:'Playfair Display',serif; word-break:break-word; overflow-wrap:break-word; color:#8b1422; position:relative; z-index:1; }
+.tile-t { font-size:10px; font-weight:700; color:#333; text-align:center; padding:1px 3px 0; font-style:normal; font-family:'Crimson Text',serif; position:relative; z-index:1; letter-spacing:0.2px; }
+.tile.r .tile-w,.tile.b .tile-w,.tile.k .tile-w,.tile.y .tile-w { color:#8b1422; }
+.tile.joker-tile .tile-w { color:white !important; }
+.tile.joker-tile .tile-t { color:rgba(255,255,255,0.85) !important; }
+.tile.in-sentence { opacity:0.35; transform:translateY(4px); box-shadow:none; cursor:default; border-style:dashed; }
+.tile-w.len-8  { font-size:11px; }
+.tile-w.len-9  { font-size:10px; letter-spacing:-0.3px; }
+.tile-w.len-10 { font-size:9px; letter-spacing:-0.5px; }
+.tile-w.len-11 { font-size:8px; letter-spacing:-0.8px; }
+.tile-w.len-12 { font-size:7.5px; letter-spacing:-1px; }
+
+/* ── OKEY RACK ── */
+.my-hand {
+  background: linear-gradient(180deg, #5a3008 0%, #3d1f05 40%, #2d1505 100%);
+  border-top: 4px solid #a07830;
+  border-left: 3px solid #7a5210;
+  border-right: 3px solid #7a5210;
+  border-bottom: 5px solid #2a1005;
+  border-radius: 6px 6px 10px 10px;
+  padding: 0;
+  flex-shrink: 0;
+  max-height: 260px;
+  box-shadow: 0 -6px 20px rgba(0,0,0,.6), inset 0 2px 6px rgba(255,200,80,.1);
+  position: relative;
+  overflow: hidden;
+}
+.my-hand::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, transparent 5%, #d4a017 20%, #f0c040 50%, #d4a017 80%, transparent 95%);
+}
+.mh-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 3px 10px 3px;
+  background: linear-gradient(180deg, rgba(0,0,0,.4) 0%, transparent 100%);
+  border-bottom: 1px solid rgba(212,160,23,.15);
+}
+.mh-label { font-family:'Playfair Display',serif; color:var(--gold); font-size:12px; letter-spacing:1px; }
+.mh-score { margin-left:auto; color:var(--gold); font-size:12px; }
+.mh-hint-btn {
+  background: rgba(212,160,23,.15); border: 1px solid rgba(212,160,23,.3);
+  color: var(--gold); border-radius: 5px; padding: 2px 8px;
+  font-size: 11px; cursor: pointer; font-family:'Playfair Display',serif;
+  transition: all .15s; white-space: nowrap;
+}
+.mh-hint-btn:hover { background: rgba(212,160,23,.3); }
+
+/* Rack rows - real okey style with slots */
+.rack-rows { padding: 2px 6px 4px; display: flex; flex-direction: column; gap: 3px; align-items: stretch; }
+.rack-row {
+  display: flex; gap: 0; align-items: flex-end;
+  background: linear-gradient(180deg, #7a5218 0%, #5a3a0a 40%, #4a2a06 100%);
+  border-radius: 6px; padding: 3px 6px 5px;
+  min-height: 98px;
+  border-top: 2px solid #a07830;
+  border-bottom: 5px solid #2a1205;
+  border-left: 2px solid #7a5210;
+  border-right: 2px solid #7a5210;
+  box-shadow: inset 0 3px 8px rgba(0,0,0,.5), 0 3px 8px rgba(0,0,0,.4);
+  flex-wrap: nowrap; overflow-x: auto;
+  position: relative;
+  justify-content: center;
+}
+/* Wood grain line on rack */
+.rack-row::after {
+  content:''; position:absolute; bottom:0; left:0; right:0; height:5px;
+  background: linear-gradient(90deg, #2a1205, #3d1f08, #5c2d0a, #3d1f08, #2a1205);
+  border-radius: 0 0 4px 4px;
+}
+.rack-row::-webkit-scrollbar { height: 3px; }
+.rack-row::-webkit-scrollbar-thumb { background: rgba(212,160,23,.3); border-radius: 2px; }
+
+/* Slot = empty space on rack */
+.rack-slot {
+  width: 58px; min-width: 58px; height: 76px;
+  border-radius: 6px;
+  border: 1.5px dashed rgba(212,160,23,0.18);
+  background: rgba(0,0,0,0.18);
+  flex-shrink: 0;
+  margin: 0 2px;
+  transition: border-color .15s, background .15s;
+  box-sizing: border-box;
+  position: relative;
+}
+.rack-slot.drag-over {
+  border-color: rgba(212,160,23,0.7) !important;
+  background: rgba(212,160,23,0.12) !important;
+  box-shadow: 0 0 10px rgba(212,160,23,0.3);
+}
+.rack-slot .tile {
+  margin: 0; width: 56px; height: 74px;
+  border-radius: 6px;
+  position: absolute; top:0; left:0;
+}
+
+/* Suggest panel */
+.suggest-panel {
+  background: rgba(0,0,0,.5); border: 1px solid rgba(212,160,23,.2);
+  border-radius: 8px; padding: 8px 10px; margin: 4px 6px 0;
+  display: none;
+}
+.suggest-panel.open { display: block; }
+.suggest-list { display: flex; flex-direction: column; gap: 4px; max-height: 120px; overflow-y: auto; }
+.suggest-item {
+  background: rgba(212,160,23,.07); border: 1px solid rgba(212,160,23,.2);
+  border-radius: 6px; padding: 5px 10px; cursor: pointer;
+  font-family:'Playfair Display',serif; font-size:12px; color: var(--gold-light);
+  transition: all .15s; display: flex; justify-content: space-between; align-items: center;
+}
+.suggest-item:hover { background: rgba(212,160,23,.2); border-color: var(--gold); }
+.suggest-item .si-tr { font-size:11px; color:rgba(245,230,200,.5); font-style:italic; }
+.suggest-best {
+  background: rgba(40,167,69,.15); border-color: rgba(40,167,69,.4); color: #5eff8a;
+}
+
+/* Log */
+.game-log { background:rgba(0,0,0,.4); border:1px solid rgba(255,255,255,.05); border-radius:8px; padding:6px 10px; max-height:60px; overflow-y:auto; scrollbar-width:thin; }
+.log-e { color:rgba(245,230,200,.55); font-size:11px; line-height:1.6; }
+.log-e.hi { color:var(--gold-light); font-weight:600; font-style:normal; }
+
+/* Action buttons */
+.abtn { padding:7px 12px; border-radius:7px; border:none; cursor:pointer; font-family:'Playfair Display',serif; font-size:12px; font-weight:700; transition:all .15s; white-space:nowrap; }
+.abtn:disabled { opacity:.35; cursor:not-allowed; }
+.abtn-draw { background:linear-gradient(135deg,#1a5276,#2e86c1); color:white; }
+.abtn-play { background:linear-gradient(135deg,#1a7a1a,#27ae60); color:white; }
+.abtn-discard { background:linear-gradient(135deg,#7d1f1f,#c0392b); color:white; }
+
+/* ===================== WIN ===================== */
+#winScreen { text-align:center; }
+.win-emoji { font-size:70px; margin-bottom:16px; animation:bounce 1s ease-in-out infinite alternate; }
+@keyframes bounce { from{transform:scale(1)rotate(-5deg)} to{transform:scale(1.1)rotate(5deg)} }
+.win-title { font-family:'Playfair Display',serif; font-size:clamp(32px,8vw,52px); color:var(--gold-light); text-shadow:0 0 30px rgba(212,160,23,.7); margin-bottom:8px; }
+.win-player { font-size:22px; margin-bottom:6px; }
+.win-sentence { background:rgba(212,160,23,.1); border:1px solid rgba(212,160,23,.4); border-radius:10px; padding:14px 20px; font-size:18px; color:var(--gold); font-family:'Playfair Display',serif; font-style:italic; margin:16px 0; max-width:460px; }
+.win-tr { color:rgba(245,230,200,.6); font-size:14px; margin-bottom:20px; }
+.scores-tbl { background:rgba(0,0,0,.4); border:1px solid rgba(212,160,23,.2); border-radius:10px; padding:16px; width:min(380px,90vw); margin-bottom:24px; }
+.sc-row { display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px solid rgba(255,255,255,.05); font-size:15px; }
+.sc-row:last-child{border-bottom:none}
+.sc-name{color:var(--gold-light)}
+
+
+/* ===== DRAG AND DROP ===== */
+.tile.dragging { opacity: 0.4; transform: scale(0.95); cursor: grabbing; }
+.tile.drag-over { transform: translateY(-8px); box-shadow: 0 8px 20px rgba(212,160,23,0.6); border-color: var(--gold-light); }
+.tile[draggable="true"] { cursor: grab; }
+.sz-tiles.drag-active { border: 2px dashed rgba(150,255,150,0.6); background: rgba(30,80,30,0.4); }
+.sz-drop-hint { 
+  display: flex; align-items: center; justify-content: center;
+  width: 68px; height: 88px; border: 2px dashed rgba(150,255,150,0.3);
+  border-radius: 8px; color: rgba(150,255,150,0.4); font-size: 24px;
+  flex-shrink: 0;
+}
+
+/* Toast */
+.toast { position:fixed; top:16px; left:50%; transform:translateX(-50%) translateY(-120px); background:rgba(20,8,0,.97); border:1px solid rgba(212,160,23,.5); border-radius:10px; padding:10px 20px; color:var(--gold-light); font-family:'Playfair Display',serif; font-size:14px; z-index:300; transition:transform .4s; max-width:90vw; text-align:center; pointer-events:none; }
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+/* Setup modal */
+.setup-modal { position:fixed; inset:0; background:rgba(0,0,0,.85); z-index:200; display:none; align-items:center; justify-content:center; padding:20px; }
+.setup-modal.active { display:flex; }
+.setup-box { background:linear-gradient(145deg,#3d1f0a,#2d0f05); border:1px solid rgba(212,160,23,.4); border-radius:16px; padding:28px; max-width:480px; width:100%; max-height:90vh; overflow-y:auto; }
+.setup-box h2 { font-family:'Playfair Display',serif; color:var(--gold-light); font-size:22px; margin-bottom:6px; }
+.setup-box p { color:rgba(245,230,200,.7); font-size:14px; line-height:1.7; margin-bottom:14px; }
+.setup-box code { background:rgba(0,0,0,.5); border:1px solid rgba(212,160,23,.3); border-radius:4px; padding:2px 8px; color:var(--gold); font-size:13px; }
+.setup-box ol { padding-left:20px; color:rgba(245,230,200,.8); font-size:14px; line-height:2; }
+.setup-box ol li { margin-bottom:4px; }
+.copy-field { display:flex; gap:8px; margin:10px 0; }
+.copy-field input { flex:1; background:rgba(0,0,0,.5); border:1px solid rgba(212,160,23,.3); border-radius:6px; padding:8px 12px; color:var(--gold); font-size:12px; outline:none; font-family:monospace; }
+.copy-btn { padding:8px 14px; background:rgba(212,160,23,.2); border:1px solid rgba(212,160,23,.4); color:var(--gold); border-radius:6px; cursor:pointer; font-size:12px; white-space:nowrap; }
+.copy-btn:hover { background:rgba(212,160,23,.35); }
+
+@media(max-width:480px){
+  .opponents-row { flex-wrap:wrap; }
+  .opp-panel { min-width:calc(50% - 3px); flex:none; }
+}
+
+
+/* ===================== LIBRARY ===================== */
+#libraryScreen { background: radial-gradient(ellipse at 50% 20%, rgba(212,160,23,0.08) 0%, transparent 60%); padding:16px; }
+.lib-header { text-align:center; margin-bottom:20px; }
+.lib-title { font-family:'Playfair Display',serif; font-size:28px; font-weight:900; color:var(--gold-light); letter-spacing:3px; }
+.lib-subtitle { font-size:12px; color:rgba(240,192,64,.5); letter-spacing:4px; margin-top:4px; }
+
+.lib-search-row { display:flex; gap:8px; margin-bottom:16px; max-width:700px; width:100%; }
+.lib-search { flex:1; padding:10px 14px; background:rgba(0,0,0,.4); border:1px solid rgba(212,160,23,.3); border-radius:8px; color:var(--cream); font-size:16px; font-family:'Crimson Text',serif; outline:none; }
+.lib-search:focus { border-color:var(--gold); }
+.lib-filter-btns { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; max-width:700px; width:100%; }
+.lib-filter { padding:6px 14px; border-radius:20px; border:1px solid rgba(212,160,23,.25); background:transparent; color:rgba(240,192,64,.6); font-size:12px; cursor:pointer; font-family:'Playfair Display',serif; letter-spacing:1px; transition:all .15s; }
+.lib-filter.active { background:rgba(212,160,23,.2); border-color:var(--gold); color:var(--gold-light); }
+.lib-filter.r { border-color:rgba(192,57,43,.4); color:rgba(192,57,43,.8); }
+.lib-filter.r.active { background:rgba(192,57,43,.2); border-color:#c0392b; color:#e74c3c; }
+.lib-filter.b { border-color:rgba(26,82,118,.4); color:rgba(41,128,185,.8); }
+.lib-filter.b.active { background:rgba(26,82,118,.2); border-color:#1a5276; color:#3498db; }
+.lib-filter.k { border-color:rgba(50,50,50,.5); color:rgba(180,180,180,.8); }
+.lib-filter.k.active { background:rgba(50,50,50,.3); border-color:#888; color:#ddd; }
+.lib-filter.y { border-color:rgba(125,102,8,.4); color:rgba(180,150,20,.8); }
+.lib-filter.y.active { background:rgba(125,102,8,.2); border-color:#7d6608; color:#d4ac0d; }
+
+.lib-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:12px; max-width:900px; width:100%; padding-bottom:20px; }
+.lib-card {
+  background:linear-gradient(145deg,rgba(212,160,23,.06),rgba(30,12,4,.9));
+  border:1px solid rgba(212,160,23,.2); border-radius:12px; padding:14px;
+  cursor:pointer; transition:all .2s; position:relative;
+}
+.lib-card:hover { border-color:rgba(212,160,23,.5); transform:translateY(-3px); box-shadow:0 8px 24px rgba(0,0,0,.4); }
+.lib-card.fav { border-color:rgba(231,76,60,.4); }
+.lib-card.fav::after { content:'♥'; position:absolute; top:8px; right:10px; color:#e74c3c; font-size:14px; }
+.lc-word { font-family:'Playfair Display',serif; font-size:20px; font-weight:900; margin-bottom:4px; }
+.lc-word.r{color:var(--red-t)}.lc-word.b{color:var(--blue-t)}.lc-word.k{color:#ccc}.lc-word.y{color:var(--gold)}
+.lc-tr { font-size:15px; color:var(--cream); margin-bottom:6px; font-style:italic; }
+.lc-type { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:rgba(240,192,64,.4); margin-bottom:8px; }
+.lc-stats { font-size:11px; color:rgba(240,192,64,.5); }
+
+/* Word detail modal */
+.word-modal { position:fixed; inset:0; background:rgba(0,0,0,.88); z-index:250; display:none; align-items:center; justify-content:center; padding:16px; }
+.word-modal.active { display:flex; }
+.word-box { background:linear-gradient(145deg,#3d1f0a,#2d0f05); border:1px solid rgba(212,160,23,.4); border-radius:16px; padding:24px; max-width:480px; width:100%; max-height:88vh; overflow-y:auto; }
+.wb-word { font-family:'Playfair Display',serif; font-size:36px; font-weight:900; text-align:center; margin-bottom:4px; }
+.wb-word.r{color:var(--red-t)}.wb-word.b{color:var(--blue-t)}.wb-word.k{color:#ccc}.wb-word.y{color:var(--gold)}
+.wb-tr { font-size:22px; text-align:center; color:var(--cream); margin-bottom:4px; font-style:italic; }
+.wb-type-badge { text-align:center; margin-bottom:16px; }
+.wb-badge { display:inline-block; padding:3px 12px; border-radius:20px; font-size:11px; letter-spacing:2px; text-transform:uppercase; font-family:'Playfair Display',serif; }
+.wb-badge.r { background:rgba(192,57,43,.2); border:1px solid rgba(192,57,43,.4); color:#e74c3c; }
+.wb-badge.b { background:rgba(26,82,118,.2); border:1px solid rgba(26,82,118,.4); color:#3498db; }
+.wb-badge.k { background:rgba(80,80,80,.2); border:1px solid rgba(150,150,150,.3); color:#ccc; }
+.wb-badge.y { background:rgba(212,160,23,.15); border:1px solid rgba(212,160,23,.3); color:var(--gold); }
+.wb-section { margin-bottom:16px; }
+.wb-section h3 { font-size:11px; letter-spacing:2px; text-transform:uppercase; color:rgba(240,192,64,.5); margin-bottom:10px; border-bottom:1px solid rgba(212,160,23,.1); padding-bottom:6px; }
+.wb-example { background:rgba(0,0,0,.3); border-left:3px solid rgba(212,160,23,.3); border-radius:0 6px 6px 0; padding:10px 12px; margin-bottom:8px; }
+.wb-ex-en { font-family:'Playfair Display',serif; font-size:14px; color:var(--gold-light); margin-bottom:3px; }
+.wb-ex-tr { font-size:13px; color:rgba(245,230,200,.6); font-style:italic; }
+.wb-fav-btn { width:100%; padding:12px; border:2px solid rgba(231,76,60,.4); border-radius:10px; background:transparent; color:rgba(231,76,60,.8); font-family:'Playfair Display',serif; font-size:16px; cursor:pointer; transition:all .2s; margin-bottom:8px; }
+.wb-fav-btn.active { background:rgba(231,76,60,.2); border-color:#e74c3c; color:#ff6b6b; }
+.wb-fav-btn:hover { background:rgba(231,76,60,.15); }
+.wb-stat { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid rgba(255,255,255,.05); font-size:13px; }
+.wb-stat:last-child { border-bottom:none; }
+.wb-stat-label { color:rgba(245,230,200,.5); }
+.wb-stat-val { color:var(--gold); font-family:'Playfair Display',serif; font-weight:700; }
+
+@media(max-width:500px){
+  .lib-grid { grid-template-columns:repeat(2,1fr); }
+}
+
+/* ===================== ROOM SETTINGS MODAL ===================== */
+.room-settings-modal { position:fixed; inset:0; background:rgba(0,0,0,.9); z-index:9999; display:none; align-items:flex-start; justify-content:center; padding:20px; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+.room-settings-modal.active { display:flex; }
+.rs-box { background:linear-gradient(145deg,#3d1f0a,#2d0f05); border:1px solid rgba(212,160,23,.4); border-radius:16px; padding:24px; max-width:500px; width:100%; overflow-y:auto; margin:auto; max-height:90vh; }
+.rs-box h2 { font-family:'Playfair Display',serif; color:var(--gold-light); font-size:22px; margin-bottom:20px; text-align:center; }
+.rs-section { margin-bottom:20px; }
+.rs-section h3 { color:var(--gold); font-size:13px; letter-spacing:2px; text-transform:uppercase; margin-bottom:10px; }
+
+/* Player count selector */
+.player-count-btns { display:flex; gap:8px; flex-wrap:wrap; }
+.pc-btn { width:48px; height:48px; border-radius:10px; border:2px solid rgba(212,160,23,.3); background:rgba(0,0,0,.4); color:rgba(245,230,200,.6); font-family:'Playfair Display',serif; font-size:18px; font-weight:700; cursor:pointer; transition:all .15s; display:flex; align-items:center; justify-content:center; }
+.pc-btn:hover { border-color:var(--gold); color:var(--gold); }
+
+/* Timer bar */
+.timer-bar-wrap { width:100%; height:6px; background:rgba(255,255,255,.1); border-radius:3px; overflow:hidden; margin-bottom:6px; }
+.timer-bar { height:100%; border-radius:3px; background:linear-gradient(90deg,#27ae60,#f0c040,#c0392b); transition:width 1s linear; }
+.timer-display { font-family:'Playfair Display',serif; font-size:22px; font-weight:900; color:var(--gold-light); min-width:36px; text-align:center; }
+.timer-display.urgent { color:#e74c3c; animation:timerPulse .5s ease-in-out infinite alternate; }
+@keyframes timerPulse { from{transform:scale(1)} to{transform:scale(1.15)} }
+.topbar-timer { display:flex; align-items:center; gap:8px; }
+.pc-btn.active { background:rgba(212,160,23,.2); border-color:var(--gold-light); color:var(--gold-light); box-shadow:0 0 12px rgba(212,160,23,.3); }
+
+/* AI slots */
+.ai-slots { display:flex; flex-direction:column; gap:8px; }
+.ai-slot { display:flex; align-items:center; gap:10px; padding:8px 12px; background:rgba(0,0,0,.3); border:1px solid rgba(212,160,23,.15); border-radius:8px; }
+.ai-slot-num { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
+.ai-slot-label { flex:1; font-size:14px; color:var(--cream); }
+.ai-toggle { position:relative; width:44px; height:24px; flex-shrink:0; }
+.ai-toggle input { opacity:0; width:0; height:0; }
+.ai-toggle-slider { position:absolute; inset:0; background:rgba(255,255,255,.1); border-radius:12px; cursor:pointer; transition:.3s; border:1px solid rgba(212,160,23,.2); }
+.ai-toggle-slider::before { content:''; position:absolute; width:18px; height:18px; left:2px; top:2px; background:#888; border-radius:50%; transition:.3s; }
+.ai-toggle input:checked + .ai-toggle-slider { background:rgba(39,174,96,.3); border-color:rgba(39,174,96,.5); }
+.ai-toggle input:checked + .ai-toggle-slider::before { transform:translateX(20px); background:#27ae60; }
+.ai-name-input { background:rgba(0,0,0,.4); border:1px solid rgba(212,160,23,.2); border-radius:6px; padding:4px 8px; color:var(--cream); font-size:13px; width:100px; outline:none; font-family:'Crimson Text',serif; }
+
+/* Theme selector */
+.theme-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+.theme-btn { padding:10px 6px; border-radius:10px; border:2px solid transparent; cursor:pointer; text-align:center; transition:all .2s; font-family:'Playfair Display',serif; font-size:11px; font-weight:700; letter-spacing:.5px; }
+.theme-btn:hover { transform:translateY(-2px); }
+.theme-btn.active { border-color:white; box-shadow:0 0 16px rgba(255,255,255,.3); transform:translateY(-2px); }
+.theme-preview { width:100%; height:36px; border-radius:6px; margin-bottom:6px; }
+
+/* Lobby update */
+.lobby-settings-row { display:flex; align-items:center; gap:8px; margin-bottom:12px; flex-wrap:wrap; justify-content:center; }
+.settings-chip { background:rgba(212,160,23,.1); border:1px solid rgba(212,160,23,.3); border-radius:20px; padding:4px 12px; color:var(--gold); font-size:12px; font-family:'Playfair Display',serif; }
+
+
+@media (max-width: 480px) {
+  .tile { width:58px; height:76px; }
+  .tile-w { font-size:10px; letter-spacing:0; }
+  .tile-t { font-size:7.5px; }
+  .rack-row { gap: 2px; padding: 3px 4px 5px; min-height:50px; }
+}
+
+/* Tutorial */
+.tut-card { display:flex; gap:12px; background:rgba(0,0,0,.3); border:1px solid rgba(212,160,23,.15); border-radius:12px; padding:14px; margin-bottom:10px; }
+.tut-num { width:28px; height:28px; border-radius:50%; background:linear-gradient(135deg,#b8860b,#d4a017); color:#2d1005; font-family:'Playfair Display',serif; font-weight:900; font-size:14px; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:2px; }
+.tut-body { flex:1; }
+.tut-title { font-family:'Playfair Display',serif; color:var(--gold-light); font-size:15px; font-weight:700; margin-bottom:6px; }
+.tut-text { color:rgba(245,230,200,.75); font-size:13px; line-height:1.7; }
+.tut-ex { background:rgba(255,255,255,.04); border-left:3px solid rgba(212,160,23,.3); padding:4px 8px; margin:3px 0; border-radius:0 4px 4px 0; font-size:12px; }
+
+/* ===== MOBİL PWA OPTİMİZASYON ===== */
+/* Safe area for notch/home bar */
+body {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Prevent scroll bounce on iOS */
+html, body { 
+  overscroll-behavior: none; 
+  height: 100%;
+  width: 100%;
+}
+
+/* Bigger tap targets on mobile */
+@media(max-width:600px){
+  .btn { min-height: 48px; font-size: 15px; }
+  .abtn { min-height: 44px; padding: 10px 14px; font-size: 13px; }
+  
+  /* Menu ekranı mobil */
+  .menu-box { padding: 20px 16px; margin: 8px; }
+  .menu-input { font-size: 16px; min-height: 48px; } /* 16px prevents iOS zoom */
+  
+  /* Oyun ekranı mobil */
+  .okey-topbar { padding: 6px 8px; }
+  .topbar-player { font-size: 10px; padding: 4px 6px; }
+  
+  /* Rack mobil */
+  .rack-slot { width: 54px; min-width: 54px; height: 70px; }
+  .rack-slot .tile { width: 54px; height: 70px; }
+  .tile { width: 54px; height: 70px; }
+  .tile-w { font-size: 9px; }
+  .tile-t { font-size: 6.5px; }
+  
+  /* Sentence zone mobil */
+  .sentence-zone { padding: 8px; min-height: 80px; }
+  .sz-tile { width: 54px; height: 70px; }
+  
+  /* Action buttons mobil - büyük ve erişilebilir */
+  .action-btns { 
+    flex-direction: row; 
+    gap: 6px;
+    padding: 6px;
+  }
+  .abtn { border-radius: 10px; }
+  
+  /* Mh header mobil */
+  .mh-header { padding: 6px 10px; }
+  .mh-name { font-size: 12px; }
+  
+  /* Side players mobil - daha ince */
+  .player-side.west, .player-side.east { 
+    width: 36px; min-width: 36px; 
+    padding: 2px;
+  }
+  .tile-back-sm { width: 14px; height: 20px; }
+  
+  /* North player mobil */
+  .player-side.north { padding: 4px 6px; }
+}
+
+/* Touch feedback */
+.tile:active { transform: scale(0.95); }
+.btn:active { transform: scale(0.97); }
+.abtn:active { transform: scale(0.96); }
+.rack-slot:active { border-color: rgba(212,160,23,0.5); }
+
+/* iOS input zoom fix */
+input, select, textarea {
+  font-size: 16px !important;
+}
+
+/* Landscape mode */
+@media(max-height: 500px) and (orientation: landscape) {
+  .rack-slot { width: 48px; min-width: 48px; height: 62px; }
+  .tile { width: 48px; height: 62px; }
+  .rack-rows { max-height: 140px; overflow-y: auto; }
+  .sentence-zone { min-height: 60px; }
+}
+
+</style>
+</head>
+<body>
+
+<!-- Config Banner -->
+<div id="configBanner">
+  ⚠️ Firebase henüz ayarlanmadı! <a href="#" onclick="showSetup()">Buraya tıkla ve 5 dakikada kur →</a>
+</div>
+
+<!-- ===================== MENU SCREEN ===================== -->
+<div id="menuScreen" class="screen active">
+  <div class="brand">
+    <div class="brand-tiles">
+      <div class="brand-tile"><span class="bt-word r">THE</span></div>
+      <div class="brand-tile"><span class="bt-word b">CAT</span></div>
+      <div class="brand-tile"><span class="bt-word k">IS</span></div>
+      <div class="brand-tile"><span class="bt-word y">BIG</span></div>
+    </div>
+    <div class="title" style="font-size:clamp(28px,6vw,56px);letter-spacing:2px;">7 WORDS TO SENTENCE</div>
+    <div class="subtitle">Online Multiplayer</div>
+  </div>
+
+  <div class="card">
+    <h2>🎮 Join Game</h2>
+    <div class="input-group">
+      <label>Name</label>
+      <input type="text" id="playerName" placeholder="Enter your name..." maxlength="20">
+    </div>
+    <button class="btn btn-gold" onclick="showRoomSettings()">🎴 Create New Room</button>
+    <div class="divider"><span>or</span></div>
+    <div class="input-group">
+      <label>Room Code</label>
+      <input type="text" id="roomCodeInput" placeholder="4-digit code..." maxlength="4" style="text-transform:uppercase;letter-spacing:4px;font-size:22px;text-align:center;">
+    </div>
+    <button class="btn btn-outline" onclick="joinRoom()">🚪 Join Room</button>
+    <div style="margin-top:10px;">
+      <button class="btn btn-outline" onclick="showLibrary()" style="background:rgba(212,160,23,.07);border-color:rgba(212,160,23,.4);color:var(--gold-light);font-size:15px;padding:12px;">📚 Word Library</button>
+    </div>
+    <div style="margin-top:8px;display:flex;gap:8px;justify-content:center;">
+      <button class="btn btn-outline" style="flex:1;font-size:13px;padding:10px;" onclick="showTutorial()">📖 How to Play?</button>
+      <button class="btn btn-outline" style="width:auto;padding:10px 14px;font-size:13px;" onclick="showRoomSettings()">⚙️</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== LOBBY SCREEN ===================== -->
+<div id="lobbyScreen" class="screen">
+  <div class="lobby-card">
+    <div class="room-code-display">
+      <div class="room-label">Room Code</div>
+      <div class="room-code" id="displayRoomCode">----</div>
+    </div>
+
+    <div id="qrContainer"></div>
+    <div style="text-align:center;color:rgba(240,192,64,.5);font-size:11px;margin-bottom:16px;letter-spacing:1px;">Scan QR code or share the code</div>
+
+    <div class="players-list">
+      <div class="lobby-settings-row"><span class="settings-chip" id="settingsChipCount">👥 4 Players</span><span class="settings-chip" id="settingsChipTheme">🎨 Classic</span><span class="settings-chip" id="settingsChipAI">🤖 No AI</span></div>
+      <h3>👥 PLAYERS (waiting for <span id="lobbyWaitCount">4</span>)</h3>
+      <div id="playerSlots"></div>
+    </div>
+
+    <div class="lobby-status" id="lobbyStatus">
+      <span class="waiting-dots"><span class="wd"></span><span class="wd"></span><span class="wd"></span></span>
+      Players waiting...
+    </div>
+
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <button class="btn btn-gold" id="startBtn" onclick="hostStartGame()" disabled style="flex:1;">🚀 Start Game</button>
+      <button class="btn btn-outline" id="lobbySettingsBtn" onclick="showRoomSettings()" style="width:auto;padding:14px 16px;font-size:18px;" title="Oda Ayarları">⚙️</button>
+    </div>
+    <button class="btn btn-outline" onclick="leaveRoom()">← Exit</button>
+  </div>
+</div>
+
+<!-- ===================== GAME SCREEN ===================== -->
+<div id="gameScreen" class="screen">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="topbar-title">🎴 7 Words to Sentence</div>
+    <div class="turn-badge" id="turnBadge">Yükleniyor...</div>
+    <div class="topbar-timer" id="topbarTimer" style="display:none;">
+      <div class="timer-bar-wrap" style="width:70px;"><div class="timer-bar" id="timerBar"></div></div>
+      <div class="timer-display" id="timerDisplay">--</div>
+    </div>
+    <button onclick="leaveRoom()" style="padding:4px 10px;font-size:11px;border-radius:6px;background:transparent;border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.5);cursor:pointer;">← Exit</button>
+  </div>
+
+  <!-- OKEY TABLE WRAPPER -->
+  <div class="okey-layout">
+
+    <!-- NORTH player -->
+    <div class="player-side north" id="sideNorth"></div>
+
+    <!-- MIDDLE ROW: West | Table | East -->
+    <div class="table-middle">
+      <div class="player-side west" id="sideWest"></div>
+
+      <!-- CENTER TABLE -->
+      <div class="okey-table">
+        <div class="table-ornament">☕</div>
+
+        <!-- Sentence zone -->
+        <div class="sentence-zone">
+          <div class="sz-label">✨ Sentence Area ✨</div>
+          <div class="sz-tiles" id="szTiles"><div class="sz-hint">Click a tile → build sentence → Play!</div></div>
+          <div id="szResult"></div>
+        </div>
+
+        <!-- Center controls: pool + discard + buttons -->
+        <div class="center-controls">
+          <div class="pool-stack" id="poolStack" onclick="drawFromPool()">
+            <div class="tile pool-tile" style="position:absolute;top:6px;left:6px;"></div>
+            <div class="tile pool-tile" style="position:absolute;top:3px;left:3px;"></div>
+            <div class="tile pool-tile" style="position:absolute;top:0;left:0;"></div>
+          </div>
+          <div class="pool-count" id="poolCount">📦</div>
+          <div class="discard-area" id="discardArea"></div>
+          <div class="action-col">
+            <button class="abtn abtn-draw" id="btnDraw" onclick="drawFromPool()">🎴 Draw</button>
+            <button class="abtn abtn-play" id="btnPlay" onclick="playSentence()">✅ Play</button>
+            <button class="abtn abtn-discard" id="btnDiscard" onclick="discardSelected()">🗑 Discard</button>
+          </div>
+        </div>
+
+        <!-- Log -->
+        <div class="game-log" id="gameLog"><div class="log-e">Oyun başladı!</div></div>
+      </div>
+
+      <div class="player-side east" id="sideEast"></div>
+    </div>
+
+    <!-- SOUTH: my rack -->
+    <div class="my-hand">
+      <div class="mh-header">
+        <div class="mh-label" id="myHandLabel">🃏 Elim</div>
+        <button class="mh-hint-btn" onclick="suggestBest()">⚡ Best</button>
+        <button class="mh-hint-btn" onclick="toggleSuggest()">💡 Hints</button>
+        <div class="mh-score" id="myScore" style="display:none;"></div>
+      </div>
+      <div class="suggest-panel" id="suggestPanel" style="display:none;">
+        <div style="font-size:10px;color:rgba(212,160,23,.6);letter-spacing:2px;margin-bottom:4px;">— POSSIBLE SENTENCES —</div>
+        <div class="suggest-list" id="suggestList"></div>
+      </div>
+      <div class="rack-rows" id="rackRows"></div>
+    </div>
+
+  </div><!-- /okey-layout -->
+</div>
+
+<!-- ===================== WIN SCREEN ===================== -->
+<div id="winScreen" class="screen">
+  <div class="win-emoji">🏆</div>
+  <div class="win-title">WINS!!</div>
+  <div class="win-player" id="winPlayer"></div>
+  <div class="win-sentence" id="winSentence"></div>
+  <div class="win-tr" id="winTr"></div>
+  <div class="scores-tbl" id="scoresTbl"></div>
+  <button class="btn btn-gold" style="width:min(320px,90vw);" onclick="backToMenu()">🔄 Play Again</button>
+</div>
+
+
+<!-- ===================== ROOM SETTINGS MODAL ===================== -->
+<div class="room-settings-modal" id="roomSettingsModal">
+  <div class="rs-box">
+    <h2>⚙️ Room Settings</h2>
+
+    <div class="rs-section">
+      <h3>👥 Player Count</h3>
+      <div class="player-count-btns">
+        <button class="pc-btn" onclick="selectPlayerCount(2)">2</button>
+        <button class="pc-btn" onclick="selectPlayerCount(3)">3</button>
+        <button class="pc-btn active" onclick="selectPlayerCount(4)">4</button>
+        <button class="pc-btn" onclick="selectPlayerCount(5)">5</button>
+        <button class="pc-btn" onclick="selectPlayerCount(6)">6</button>
+        <button class="pc-btn" onclick="selectPlayerCount(7)">7</button>
+        <button class="pc-btn" onclick="selectPlayerCount(8)">8</button>
+      </div>
+    </div>
+
+    <div class="rs-section">
+      <h3>🤖 AI Players</h3>
+      <div class="ai-slots" id="aiSlots"></div>
+    </div>
+
+    <div class="rs-section">
+      <h3>🎨 Table Theme</h3>
+      <div class="theme-grid" id="themeGrid">
+        <button class="theme-btn active" onclick="selectTheme('classic')" style="background:linear-gradient(135deg,#2a2a32,#3a3a44);">
+          <div class="theme-preview" style="background:linear-gradient(135deg,rgba(60,65,70,.85),rgba(40,44,48,.95));"></div>Classic
+        </button>
+        <button class="theme-btn" onclick="selectTheme('midnight')" style="background:linear-gradient(135deg,#0a0a2a,#1a1a4a);">
+          <div class="theme-preview" style="background:linear-gradient(135deg,#0a1628,#1a2a4a);"></div>Night
+        </button>
+        <button class="theme-btn" onclick="selectTheme('royal')" style="background:linear-gradient(135deg,#2a0a3a,#4a1a6a);">
+          <div class="theme-preview" style="background:linear-gradient(135deg,#1a0a2a,#3a1a5a);"></div>Royal
+        </button>
+        <button class="theme-btn" onclick="selectTheme('ocean')" style="background:linear-gradient(135deg,#0a1a3a,#1a3a5a);">
+          <div class="theme-preview" style="background:linear-gradient(135deg,#0a2a3a,#1a4a5a);"></div>Ocean
+        </button>
+        <button class="theme-btn" onclick="selectTheme('fire')" style="background:linear-gradient(135deg,#3a0a0a,#6a1a0a);">
+          <div class="theme-preview" style="background:linear-gradient(135deg,#3a0a0a,#6a2a0a);"></div>Fire
+        </button>
+        <button class="theme-btn" onclick="selectTheme('forest')" style="background:linear-gradient(135deg,#0a2a0a,#1a4a1a);">
+          <div class="theme-preview" style="background:linear-gradient(135deg,#0a1a0a,#1a3a1a);"></div>Forest
+        </button>
+      </div>
+    </div>
+
+    <div class="rs-section">
+      <h3>⏱️ Turn Timer</h3>
+      <div class="player-count-btns">
+        <button class="pc-btn" onclick="selectTimer(0)" id="timerBtn0" style="width:64px;font-size:13px;">None</button>
+        <button class="pc-btn" onclick="selectTimer(20)" id="timerBtn20">20s</button>
+        <button class="pc-btn" onclick="selectTimer(30)" id="timerBtn30">30s</button>
+        <button class="pc-btn active" onclick="selectTimer(45)" id="timerBtn45">45s</button>
+        <button class="pc-btn" onclick="selectTimer(60)" id="timerBtn60">60s</button>
+        <button class="pc-btn" onclick="selectTimer(90)" id="timerBtn90">90s</button>
+      </div>
+    </div>
+
+    <button class="btn btn-gold" onclick="createRoomWithSettings()" style="margin-bottom:10px;">🚀 Create Room</button>
+    <button class="btn btn-outline" onclick="closeRoomSettings()">← Back</button>
+  </div>
+</div>
+
+
+
+<!-- ===================== TUTORIAL SCREEN ===================== -->
+<div id="tutorialScreen" class="screen" style="padding:16px;overflow-y:scroll;-webkit-overflow-scrolling:touch;height:100vh;">
+  <button onclick="backToMenu()" style="position:fixed;top:12px;right:14px;z-index:99;background:rgba(212,160,23,.15);border:1px solid rgba(212,160,23,.4);color:var(--gold);border-radius:50%;width:40px;height:40px;font-size:20px;cursor:pointer;line-height:1;">✕</button>
+  <div style="max-width:600px;margin:0 auto;padding-bottom:80px;">
+    <div style="text-align:center;margin-bottom:20px;">
+      <div style="font-family:'Playfair Display',serif;font-size:26px;font-weight:900;color:var(--gold-light);letter-spacing:3px;">📖 HOW TO PLAY?</div>
+      <div style="font-size:12px;color:rgba(240,192,64,.5);letter-spacing:3px;margin-top:4px;">7 WORDS TO SENTENCE - GUIDE</div>
+    </div>
+
+    <!-- Step cards -->
+    <div class="tut-card">
+      <div class="tut-num">1</div>
+      <div class="tut-body">
+        <div class="tut-title">🎴 Taş Renkleri</div>
+        <div class="tut-text">Taşlar 4 renkte gelir:
+          <span style="color:var(--red-t);font-weight:900;">KIRMIZI = Verbs</span> (RUN, WALKED, SINGING...)<br>
+          <span style="color:var(--blue-t);font-weight:900;">MAVİ = Nouns</span> (CAT, GARDEN, MUSIC...)<br>
+          <span style="color:#ccc;font-weight:900;">SİYAH = Sıfat/Zarf</span> (HAPPY, QUICKLY, VERY...)<br>
+          <span style="color:var(--gold);font-weight:900;">SARI = Yapısal</span> (THE, IN, DO, ?...)
+        </div>
+      </div>
+    </div>
+
+    <div class="tut-card">
+      <div class="tut-num">2</div>
+      <div class="tut-body">
+        <div class="tut-title">🎯 Amaç</div>
+        <div class="tut-text">Elindeki taşlardan <strong style="color:var(--gold);">en az 7 kelimelik</strong> geçerli bir İngilizce cümle kur ve oyna! Cümle ne kadar uzun olursa o kadar çok puan kazanırsın.</div>
+      </div>
+    </div>
+
+    <div class="tut-card">
+      <div class="tut-num">3</div>
+      <div class="tut-body">
+        <div class="tut-title">🔄 Tur Sırası</div>
+        <div class="tut-text">
+          Sıra sana gelince:<br>
+          <strong style="color:#3498db;">1. Çek</strong> — havuzdan veya çöp yığınından taş al<br>
+          <strong style="color:#27ae60;">2. Oyna</strong> — 7+ kelimelik cümle kur, "Oyna"ya bas<br>
+          <strong style="color:#c0392b;">veya At</strong> — istemediğin taşı at, sıra geçer
+        </div>
+      </div>
+    </div>
+
+    <div class="tut-card">
+      <div class="tut-num">4</div>
+      <div class="tut-body">
+        <div class="tut-title">✅ Geçerli Cümle Türleri</div>
+        <div class="tut-text">
+          <div class="tut-ex">🟢 Olumlu: <em>"I WALK IN THE PARK EVERY MORNING"</em></div>
+          <div class="tut-ex">🔴 Olumsuz: <em>"SHE DOES NOT LIKE COLD WEATHER IN WINTER"</em></div>
+          <div class="tut-ex">❓ Soru: <em>"DO YOU WALK IN THE PARK EVERY DAY ?"</em></div>
+          <div class="tut-ex">🔵 -ing: <em>"SHE LOVES SINGING BEAUTIFUL SONGS IN THE MORNING"</em></div>
+          <div class="tut-ex">⏮ Geçmiş: <em>"HE WALKED SLOWLY TO SCHOOL IN THE COLD MORNING"</em></div>
+          <div class="tut-ex">🔮 Gelecek: <em>"WE WILL BUILD A BETTER WORLD FOR OUR CHILDREN"</em></div>
+          <div class="tut-ex">⚡ Modal: <em>"YOU CAN LEARN NEW WORDS EASILY BY PLAYING THIS GAME"</em></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tut-card">
+      <div class="tut-num">5</div>
+      <div class="tut-body">
+        <div class="tut-title">🃏 Joker &amp; ?</div>
+        <div class="tut-text"><strong style="color:#ff6b6b;">JOKER</strong> ve <strong style="color:#ff6b6b;">?</strong> taşları herhangi bir kelime yerine geçer. ? özellikle soru cümlelerinin sonuna da konabilir!</div>
+      </div>
+    </div>
+
+    <div class="tut-card">
+      <div class="tut-num">6</div>
+      <div class="tut-body">
+        <div class="tut-title">⚡ İpucu Butonları</div>
+        <div class="tut-text">
+          <strong style="color:var(--gold);">⚡ Best</strong> — elindeki taşlarla yapılabilecek en yüksek puanlı cümleyi otomatik seçer<br>
+          <strong style="color:var(--gold);">💡 Hints</strong> — birden fazla seçenek gösterir, beğendiğini seç
+        </div>
+      </div>
+    </div>
+
+    <div class="tut-card">
+      <div class="tut-num">7</div>
+      <div class="tut-body">
+        <div class="tut-title">🏆 Puan Sistemi</div>
+        <div class="tut-text">Cümle uzunluğu × 10 puan. 7 kelime = 70p, 10 kelime = 100p, 12 kelime = 120p. Kazanan ilk geçerli cümleyi oynayan oyuncudur!</div>
+      </div>
+    </div>
+
+    <button class="btn btn-gold" onclick="backToMenu()" style="width:100%;margin-top:12px;">🎴 Got it, Let's Play!</button>
+  </div>
+</div>
+
+<!-- ===================== LIBRARY SCREEN ===================== -->
+<div id="libraryScreen" class="screen">
+  <div class="lib-header">
+    <button onclick="backToMenu()" style="position:fixed;top:12px;right:14px;z-index:99;background:rgba(212,160,23,.15);border:1px solid rgba(212,160,23,.4);color:var(--gold);border-radius:50%;width:38px;height:38px;font-size:18px;cursor:pointer;line-height:1;">✕</button>
+    <div class="lib-title">📚 WORD LIBRARY</div>
+    <div class="lib-subtitle">Explore English words</div>
+  </div>
+  <div class="lib-search-row">
+    <input class="lib-search" id="libSearch" placeholder="🔍 Search words..." oninput="renderLibrary()" autocomplete="off">
+  </div>
+  <div class="lib-filter-btns">
+    <button class="lib-filter active" onclick="setLibFilter('all',this)">All</button>
+    <button class="lib-filter r" onclick="setLibFilter('r',this)">🔴 Verbs</button>
+    <button class="lib-filter b" onclick="setLibFilter('b',this)">🔵 Nouns</button>
+    <button class="lib-filter k" onclick="setLibFilter('k',this)">⚫ Adjectives</button>
+    <button class="lib-filter y" onclick="setLibFilter('y',this)">🟡 Other</button>
+    <button class="lib-filter" onclick="setLibFilter('fav',this)" style="border-color:rgba(231,76,60,.4);color:rgba(231,76,60,.7);">♥ Favorites</button>
+  </div>
+  <div class="lib-grid" id="libGrid"></div>
+  <button class="btn btn-outline" onclick="backToMenu()" style="width:min(320px,90vw);margin-top:8px;">← Menu</button>
+</div>
+
+<!-- ===================== WORD DETAIL MODAL ===================== -->
+<div class="word-modal" id="wordModal">
+  <div class="word-box">
+    <div class="wb-word" id="wbWord"></div>
+    <div class="wb-tr" id="wbTr"></div>
+    <div class="wb-type-badge"><span class="wb-badge" id="wbBadge"></span></div>
+    <button class="wb-fav-btn" id="wbFavBtn" onclick="toggleWordFav()">♥ Favoritese Ekle</button>
+    <div class="wb-section">
+      <h3>📖 Günlük Hayatta Kullanım</h3>
+      <div id="wbExamples"></div>
+    </div>
+    <div class="wb-section">
+      <h3>🎴 Oyundaki Cümleler</h3>
+      <div id="wbGameSentences"></div>
+    </div>
+    <button class="btn btn-outline" onclick="closeWordModal()" style="margin-top:4px;">✕ Kapat</button>
+  </div>
+</div>
+
+<!-- ===================== SETUP MODAL ===================== -->
+<div class="setup-modal" id="setupModal">
+  <div class="setup-box">
+    <h2>⚙️ Firebase Kurulum (5 dakika)</h2>
+    <p>Oyunun online çalışması için Firebase Realtime Database gerekli. Tamamen <strong style="color:var(--gold)">ücretsiz!</strong></p>
+    <ol>
+      <li><a href="https://console.firebase.google.com" target="_blank" style="color:var(--gold)">console.firebase.google.com</a> → "Proje Oluştur"</li>
+      <li>Proje adı ver (örn: <code>kelime-okey</code>) → Devam et</li>
+      <li>Sol menü → <strong>Realtime Database</strong> → "Veritabanı Oluştur"</li>
+      <li>"Test modunda başlat" seç → Oluştur</li>
+      <li>Sol menü → ⚙️ Proje Ayarları → "Uygulama ekle" → Web (&lt;/&gt;)</li>
+      <li>Nickname gir → "Uygulamayı Kaydet"</li>
+      <li>Aşağıdaki bilgileri buraya yapıştır:</li>
+    </ol>
+
+    <div class="input-group" style="margin-top:12px;">
+      <label>API Key</label>
+      <input type="text" id="cfgApiKey" placeholder="AIzaSy...">
+    </div>
+    <div class="input-group">
+      <label>Auth Domain</label>
+      <input type="text" id="cfgAuthDomain" placeholder="proje-adi.firebaseapp.com">
+    </div>
+    <div class="input-group">
+      <label>Database URL</label>
+      <input type="text" id="cfgDbUrl" placeholder="https://proje-adi-default-rtdb.firebaseio.com">
+    </div>
+    <div class="input-group">
+      <label>Project ID</label>
+      <input type="text" id="cfgProjectId" placeholder="proje-adi">
+    </div>
+    <div class="input-group">
+      <label>App ID</label>
+      <input type="text" id="cfgAppId" placeholder="1:123456:web:abcdef">
+    </div>
+
+    <button class="btn btn-gold" onclick="saveFirebaseConfig()" style="margin-top:8px;">💾 Kaydet ve Bağlan</button>
+    <button class="btn btn-outline" onclick="closeSetup()" style="margin-top:8px;">Kapat</button>
+
+    <p style="margin-top:16px; font-size:12px; color:rgba(245,230,200,.4);">
+      Ayarlar tarayıcıda saklanır. Netlify'a yüklerken bu adımı tekrar yapman gerekmez — config'i HTML dosyasına göm.
+    </p>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ===================== WORD DATA =====================
+
+// ===================== WORD DEFINITIONS =====================
+// Renkler: r=fiil, b=isim, k=sıfat/zarf, y=yapısal (artikel/zamir/edat/yardımcı)
+
+const WORDS = {
+  r:[ // VERBLER — base form
+    {w:"RUN",t:"koş"},{w:"EAT",t:"ye"},{w:"SLEEP",t:"uyu"},{w:"PLAY",t:"oyna"},
+    {w:"LOVE",t:"sev"},{w:"HAVE",t:"sahip ol"},{w:"MAKE",t:"yap"},{w:"KNOW",t:"bil"},
+    {w:"THINK",t:"düşün"},{w:"COME",t:"gel"},{w:"GIVE",t:"ver"},{w:"TAKE",t:"al"},
+    {w:"SEE",t:"gör"},{w:"WANT",t:"iste"},{w:"LOOK",t:"bak"},{w:"FEEL",t:"hisset"},
+    {w:"LIKE",t:"beğen"},{w:"NEED",t:"ihtiyaç duy"},{w:"HELP",t:"yardım et"},{w:"WALK",t:"yürü"},
+    {w:"WRITE",t:"yaz"},{w:"READ",t:"oku"},{w:"TELL",t:"söyle"},{w:"GO",t:"git"},
+    {w:"MEET",t:"tanış"},{w:"TRY",t:"dene"},{w:"FIND",t:"bul"},{w:"LEARN",t:"öğren"},
+    {w:"TEACH",t:"öğret"},{w:"LISTEN",t:"dinle"},{w:"SPEAK",t:"konuş"},{w:"SHOW",t:"göster"},
+    {w:"BRING",t:"getir"},{w:"BUY",t:"satın al"},{w:"SELL",t:"sat"},{w:"OPEN",t:"aç"},
+    {w:"CLOSE",t:"kapat"},{w:"START",t:"başla"},{w:"FINISH",t:"bitir"},{w:"SEND",t:"gönder"},
+    {w:"CALL",t:"ara"},{w:"WAIT",t:"bekle"},{w:"LEAVE",t:"ayrıl"},{w:"VISIT",t:"ziyaret et"},
+    {w:"ENJOY",t:"zevk al"},{w:"SMILE",t:"gülümse"},{w:"CRY",t:"ağla"},{w:"SING",t:"şarkı söyle"},
+    {w:"DANCE",t:"dans et"},{w:"SWIM",t:"yüz"},{w:"CLIMB",t:"tırman"},{w:"DRAW",t:"çiz"},
+    {w:"PAINT",t:"boya"},{w:"COOK",t:"pişir"},{w:"CLEAN",t:"temizle"},{w:"BUILD",t:"inşa et"},
+    {w:"BREAK",t:"kır"},{w:"FIX",t:"tamir et"},{w:"USE",t:"kullan"},{w:"WORK",t:"çalış"},
+    {w:"LIVE",t:"yaşa"},{w:"MOVE",t:"taşın"},{w:"GROW",t:"büyü"},{w:"CHANGE",t:"değiş"},
+    {w:"STOP",t:"dur"},{w:"HOLD",t:"tut"},{w:"PUT",t:"koy"},{w:"KEEP",t:"sakla"},
+    {w:"LOSE",t:"kaybet"},{w:"WIN",t:"kazan"},{w:"SAVE",t:"kurtar/kaydet"},{w:"SHARE",t:"paylaş"},
+    {w:"SPEND",t:"harca"},{w:"PLAN",t:"planla"},{w:"CHOOSE",t:"seç"},{w:"REMEMBER",t:"hatırla"},
+    {w:"FORGET",t:"unut"},{w:"UNDERSTAND",t:"anla"},{w:"BELIEVE",t:"inan"},{w:"HOPE",t:"umut et"},
+    {w:"DREAM",t:"hayal kur"},{w:"HEAR",t:"duy"},{w:"TOUCH",t:"dokun"},{w:"PUSH",t:"it"},
+    {w:"PULL",t:"çek"},{w:"PICK",t:"topla"},{w:"DROP",t:"düşür"},{w:"THROW",t:"fırlat"},
+    {w:"CATCH",t:"yakala"},{w:"KICK",t:"tekme at"},{w:"HIT",t:"vur"},{w:"JUMP",t:"zıpla"},
+    {w:"TURN",t:"dön"},{w:"TRAVEL",t:"seyahat et"},{w:"RETURN",t:"geri dön"},{w:"ARRIVE",t:"var"},
+    {w:"ASK",t:"sor"},{w:"ANSWER",t:"cevapla"},{w:"SAY",t:"de"},{w:"TALK",t:"konuş"},
+    {w:"AGREE",t:"katıl"},{w:"REFUSE",t:"reddet"},{w:"ACCEPT",t:"kabul et"},{w:"APOLOGIZE",t:"özür dile"},
+    // 3. tekil şahıs (-s/-es)
+    {w:"RUNS",t:"koşar"},{w:"EATS",t:"yer"},{w:"LOVES",t:"sever"},{w:"READS",t:"okur"},
+    {w:"GETS",t:"alır"},{w:"GOES",t:"gider"},{w:"KNOWS",t:"bilir"},{w:"THINKS",t:"düşünür"},
+    {w:"SAYS",t:"söyler"},{w:"ASKS",t:"sorar"},{w:"GIVES",t:"verir"},{w:"TAKES",t:"alır"},
+    {w:"SEES",t:"görür"},{w:"FEELS",t:"hisseder"},{w:"NEEDS",t:"ihtiyaç duyar"},{w:"WANTS",t:"ister"},
+    {w:"MAKES",t:"yapar"},{w:"HELPS",t:"yardım eder"},{w:"WALKS",t:"yürür"},{w:"COMES",t:"gelir"},
+    {w:"SINGS",t:"şarkı söyler"},{w:"DANCES",t:"dans eder"},{w:"SWIMS",t:"yüzer"},{w:"WORKS",t:"çalışır"},
+    {w:"LIVES",t:"yaşar"},{w:"LISTENS",t:"dinler"},{w:"SPEAKS",t:"konuşur"},{w:"TEACHES",t:"öğretir"},
+    {w:"WRITES",t:"yazar"},{w:"PLAYS",t:"oynar"},{w:"SMILES",t:"gülümser"},{w:"CRIES",t:"ağlar"},
+    // Yardımcı fiiller
+    {w:"IS",t:"dır/dir"},{w:"ARE",t:"dır/dir"},{w:"WAS",t:"idi"},{w:"WERE",t:"idiler"},
+    {w:"HAS",t:"var"},{w:"HAVE",t:"var (1.şahıs)"},{w:"HAD",t:"vardı"},
+    {w:"DO",t:"(yardımcı)"},{w:"DOES",t:"(yardımcı)"},{w:"DID",t:"(geçmiş yardımcı)"},
+    {w:"WILL",t:"(gelecek)"},{w:"WOULD",t:"(koşullu)"},{w:"CAN",t:"(yapabilmek)"},
+    {w:"COULD",t:"(yapabilirdi)"},{w:"SHOULD",t:"(yapmalı)"},{w:"MUST",t:"(zorunda)"},
+    {w:"MAY",t:"(olabilir)"},{w:"MIGHT",t:"(olabilirdi)"},
+    // -ING formu (gerund/present continuous)
+    {w:"RUNNING",t:"koşarak"},{w:"EATING",t:"yiyerek"},{w:"SLEEPING",t:"uyuyarak"},
+    {w:"PLAYING",t:"oynayarak"},{w:"LOVING",t:"severek"},{w:"MAKING",t:"yaparak"},
+    {w:"GOING",t:"giderek"},{w:"SINGING",t:"şarkı söyleyerek"},{w:"DANCING",t:"dans ederek"},
+    {w:"SWIMMING",t:"yüzerek"},{w:"WALKING",t:"yürüyerek"},{w:"REYOUR NAMEG",t:"okuyarak"},
+    {w:"WRITING",t:"yazarak"},{w:"WORKING",t:"çalışarak"},{w:"LIVING",t:"yaşayarak"},
+    {w:"LEARNING",t:"öğrenerek"},{w:"TEACHING",t:"öğreterek"},{w:"COOKING",t:"pişirerek"},
+    {w:"CLEANING",t:"temizleyerek"},{w:"SMILING",t:"gülümseyerek"},{w:"CRYING",t:"ağlayarak"},
+    {w:"WAITING",t:"bekleyerek"},{w:"TALKING",t:"konuşarak"},{w:"THINKING",t:"düşünerek"},
+    {w:"COMING",t:"gelerek"},{w:"LEAVING",t:"ayrılarak"},{w:"HELPING",t:"yardım ederek"},
+    // -ED geçmiş zaman
+    {w:"WALKED",t:"yürüdü"},{w:"TALKED",t:"konuştu"},{w:"PLAYED",t:"oynadı"},
+    {w:"LOVED",t:"sevdi"},{w:"HELPED",t:"yardım etti"},{w:"WORKED",t:"çalıştı"},
+    {w:"SMILED",t:"gülümsedi"},{w:"COOKED",t:"pişirdi"},{w:"CLEANED",t:"temizledi"},
+    {w:"CALLED",t:"aradı"},{w:"WAITED",t:"bekledi"},{w:"OPENED",t:"açtı"},
+    {w:"CLOSED",t:"kapattı"},{w:"STARTED",t:"başladı"},{w:"FINISHED",t:"bitirdi"},
+    {w:"VISITED",t:"ziyaret etti"},{w:"ENJOYED",t:"zevk aldı"},{w:"LEARNED",t:"öğrendi"},
+    {w:"SHOWED",t:"gösterdi"},{w:"MOVED",t:"taşındı"},{w:"CHANGED",t:"değişti"},
+    {w:"WANTED",t:"istedi"},{w:"NEEDED",t:"ihtiyaç duydu"},{w:"LOOKED",t:"baktı"},
+    {w:"ASKED",t:"sordu"},{w:"ANSWERED",t:"cevapladı"},{w:"AGREED",t:"katıldı"},
+    {w:"USED",t:"kullandı"},{w:"SAVED",t:"kurtardı"},{w:"SHARED",t:"paylaştı"},
+    // Düzensiz geçmiş
+    {w:"RAN",t:"koştu"},{w:"ATE",t:"yedi"},{w:"SLEPT",t:"uyudu"},{w:"CAME",t:"geldi"},
+    {w:"WENT",t:"gitti"},{w:"SAW",t:"gördü"},{w:"GAVE",t:"verdi"},{w:"TOOK",t:"aldı"},
+    {w:"MADE",t:"yaptı"},{w:"KNEW",t:"bildi"},{w:"THOUGHT",t:"düşündü"},{w:"FELT",t:"hissetti"},
+    {w:"HEARD",t:"duydu"},{w:"FOUND",t:"buldu"},{w:"TOLD",t:"söyledi"},{w:"SANG",t:"şarkı söyledi"},
+    {w:"DANCED",t:"dans etti"},{w:"SWAM",t:"yüzdü"},{w:"WROTE",t:"yazdı"},{w:"READ",t:"okudu"},
+    {w:"BUILT",t:"inşa etti"},{w:"WON",t:"wins"},{w:"LOST",t:"kaybetti"},{w:"SPENT",t:"harcadı"},
+    {w:"KEPT",t:"sakladı"},{w:"HELD",t:"tuttu"},{w:"BROUGHT",t:"getirdi"},{w:"BOUGHT",t:"satın aldı"},
+    {w:"TAUGHT",t:"öğretti"},{w:"CAUGHT",t:"yakaladı"},{w:"MET",t:"tanıştı"},{w:"LEFT",t:"ayrıldı"},
+    {w:"SENT",t:"gönderdi"},{w:"BROKE",t:"kırdı"},{w:"DREW",t:"çizdi"},{w:"GREW",t:"büyüdü"},
+    {w:"CHOSE",t:"seçti"},{w:"FORGOT",t:"unuttu"},{w:"BEGAN",t:"başladı"},{w:"SPOKE",t:"konuştu"},
+    {w:"UNDERSTOOD",t:"anladı"},{w:"BELIEVED",t:"inandı"},{w:"DREAMED",t:"hayal kurdu"},
+    // Geçmiş participle (-ed/-en for perfect tenses)
+    {w:"BEEN",t:"olmuş"},{w:"DONE",t:"yapılmış"},{w:"SEEN",t:"görülmüş"},
+    {w:"EATEN",t:"yenilmiş"},{w:"WRITTEN",t:"yazılmış"},{w:"SPOKEN",t:"konuşulmuş"},
+    {w:"BROKEN",t:"kırılmış"},{w:"GROWN",t:"büyümüş"},{w:"KNOWN",t:"bilinmiş"},
+    {w:"CHOSEN",t:"seçilmiş"},{w:"FALLEN",t:"düşmüş"},{w:"FORGOTTEN",t:"unutulmuş"},
+  ],
+  b:[ // NOUNLER
+    {w:"CAT",t:"kedi"},{w:"DOG",t:"köpek"},{w:"BOOK",t:"kitap"},{w:"HOUSE",t:"ev"},
+    {w:"WATER",t:"su"},{w:"FOOD",t:"yemek"},{w:"TIME",t:"zaman"},{w:"LIFE",t:"hayat"},
+    {w:"WORLD",t:"dünya"},{w:"SCHOOL",t:"okul"},{w:"MUSIC",t:"müzik"},{w:"CITY",t:"şehir"},
+    {w:"TREE",t:"ağaç"},{w:"BIRD",t:"kuş"},{w:"STAR",t:"yıldız"},{w:"SUN",t:"güneş"},
+    {w:"MOON",t:"ay"},{w:"FLOWER",t:"çiçek"},{w:"FRIEND",t:"arkadaş"},{w:"FAMILY",t:"aile"},
+    {w:"CHILD",t:"çocuk"},{w:"MOTHER",t:"anne"},{w:"FATHER",t:"baba"},{w:"TEACHER",t:"öğretmen"},
+    {w:"DREAM",t:"rüya"},{w:"HEART",t:"kalp"},{w:"FISH",t:"balık"},{w:"STORY",t:"hikaye"},
+    {w:"MORNING",t:"sabah"},{w:"NIGHT",t:"gece"},{w:"DAY",t:"gün"},{w:"WEEK",t:"hafta"},
+    {w:"YEAR",t:"yıl"},{w:"HOME",t:"yuva"},{w:"ROOM",t:"oda"},{w:"DOOR",t:"kapı"},
+    {w:"WINDOW",t:"pencere"},{w:"TABLE",t:"masa"},{w:"CHAIR",t:"sandalye"},{w:"GARDEN",t:"bahçe"},
+    {w:"PARK",t:"park"},{w:"ROAD",t:"yol"},{w:"BRIDGE",t:"köprü"},{w:"RIVER",t:"nehir"},
+    {w:"SEA",t:"deniz"},{w:"MOUNTAIN",t:"dağ"},{w:"ISLAND",t:"ada"},{w:"COUNTRY",t:"ülke"},
+    {w:"MARKET",t:"pazar"},{w:"SHOP",t:"dükkan"},{w:"GAME",t:"oyun"},{w:"TEAM",t:"takım"},
+    {w:"PLAYER",t:"oyuncu"},{w:"LETTER",t:"mektup"},{w:"WORD",t:"kelime"},{w:"LANGUAGE",t:"dil"},
+    {w:"COMPUTER",t:"bilgisayar"},{w:"PHONE",t:"telefon"},{w:"CAR",t:"araba"},{w:"TRAIN",t:"tren"},
+    {w:"PLANE",t:"uçak"},{w:"TICKET",t:"bilet"},{w:"MONEY",t:"para"},{w:"JOB",t:"iş"},
+    {w:"DOCTOR",t:"doktor"},{w:"HOSPITAL",t:"hastane"},{w:"STUDENT",t:"öğrenci"},{w:"LESSON",t:"ders"},
+    {w:"QUESTION",t:"soru"},{w:"ANSWER",t:"cevap"},{w:"IDEA",t:"fikir"},{w:"PLAN",t:"plan"},
+    {w:"PROBLEM",t:"sorun"},{w:"SOLUTION",t:"çözüm"},{w:"CHANGE",t:"değişim"},{w:"FUTURE",t:"gelecek"},
+    {w:"PAST",t:"geçmiş"},{w:"MOMENT",t:"an"},{w:"PLACE",t:"yer"},{w:"WAY",t:"yol"},
+    {w:"PEACE",t:"barış"},{w:"HOPE",t:"umut"},{w:"JOY",t:"sevinç"},{w:"PAIN",t:"acı"},
+    {w:"LUCK",t:"şans"},{w:"TRUTH",t:"gerçek"},{w:"LIE",t:"yalan"},{w:"SECRET",t:"sır"},
+    {w:"GIFT",t:"hediye"},{w:"PARTY",t:"parti"},{w:"GAME",t:"oyun"},{w:"SPORT",t:"spor"},
+    {w:"ART",t:"sanat"},{w:"SCIENCE",t:"bilim"},{w:"NATURE",t:"doğa"},{w:"SKY",t:"gökyüzü"},
+    {w:"RAIN",t:"yağmur"},{w:"SNOW",t:"kar"},{w:"WIND",t:"rüzgar"},{w:"FIRE",t:"ateş"},
+    {w:"EARTH",t:"toprak"},{w:"STONE",t:"taş"},{w:"GLASS",t:"cam"},{w:"PAPER",t:"kağıt"},
+    {w:"BREAD",t:"ekmek"},{w:"COFFEE",t:"kahve"},{w:"TEA",t:"çay"},{w:"MILK",t:"süt"},
+    {w:"FRUIT",t:"meyve"},{w:"APPLE",t:"elma"},{w:"ORANGE",t:"portakal"},{w:"FLOWER",t:"çiçek"},
+    {w:"HORSE",t:"at"},{w:"LION",t:"aslan"},{w:"WOLF",t:"kurt"},{w:"BEAR",t:"ayı"},
+    {w:"BUTTERFLY",t:"kelebek"},{w:"BEACH",t:"sahil"},{w:"FOREST",t:"orman"},{w:"DESERT",t:"çöl"},
+    {w:"VILLAGE",t:"köy"},{w:"STREET",t:"sokak"},{w:"CORNER",t:"köşe"},{w:"STEP",t:"adım"},
+    {w:"VOICE",t:"ses"},{w:"SONG",t:"şarkı"},{w:"PICTURE",t:"resim"},{w:"COLOR",t:"renk"},
+    {w:"LIGHT",t:"ışık"},{w:"SHADOW",t:"gölge"},{w:"MEMORY",t:"anı"},{w:"SPIRIT",t:"ruh"},
+    {w:"SISTER",t:"kız kardeş"},{w:"BROTHER",t:"erkek kardeş"},{w:"BABY",t:"bebek"},
+    {w:"NEIGHBOR",t:"komşu"},{w:"STRANGER",t:"yabancı"},{w:"HERO",t:"kahraman"},
+    {w:"KING",t:"kral"},{w:"QUEEN",t:"kraliçe"},{w:"SOLDIER",t:"asker"},{w:"SCIENTIST",t:"bilim insanı"},
+    {w:"ARTIST",t:"sanatçı"},{w:"WRITER",t:"yazar"},{w:"SINGER",t:"şarkıcı"},{w:"RUNNER",t:"koşucu"},
+    {w:"DOOR",t:"kapı"},{w:"KEY",t:"anahtar"},{w:"BOX",t:"kutu"},{w:"BAG",t:"çanta"},
+    {w:"HAT",t:"şapka"},{w:"COAT",t:"palto"},{w:"SHOE",t:"ayakkabı"},{w:"RING",t:"yüzük"},
+    {w:"CLOCK",t:"saat"},{w:"MAP",t:"harita"},{w:"NEWS",t:"haber"},{w:"MAGAZINE",t:"dergi"},
+  ],
+  k:[ // ADJECTIVELAR + ZARFLAR
+    {w:"BIG",t:"büyük"},{w:"SMALL",t:"küçük"},{w:"GOOD",t:"iyi"},{w:"BAD",t:"kötü"},
+    {w:"HOT",t:"sıcak"},{w:"COLD",t:"soğuk"},{w:"FAST",t:"hızlı"},{w:"SLOW",t:"yavaş"},
+    {w:"NEW",t:"yeni"},{w:"OLD",t:"eski"},{w:"HAPPY",t:"mutlu"},{w:"SAD",t:"üzgün"},
+    {w:"LONG",t:"uzun"},{w:"SHORT",t:"kısa"},{w:"BRIGHT",t:"parlak"},{w:"DARK",t:"karanlık"},
+    {w:"SOFT",t:"yumuşak"},{w:"FUNNY",t:"komik"},{w:"NICE",t:"güzel"},{w:"KIND",t:"nazik"},
+    {w:"YOUNG",t:"genç"},{w:"TALL",t:"uzun boylu"},{w:"SMART",t:"akıllı"},{w:"HARD",t:"sert"},
+    {w:"GREAT",t:"harika"},{w:"STRONG",t:"güçlü"},{w:"WEAK",t:"zayıf"},{w:"RICH",t:"zengin"},
+    {w:"POOR",t:"fakir"},{w:"BRAVE",t:"cesur"},{w:"CALM",t:"sakin"},{w:"BUSY",t:"meşgul"},
+    {w:"FREE",t:"özgür"},{w:"SAFE",t:"güvenli"},{w:"CLEAN",t:"temiz"},{w:"DIRTY",t:"kirli"},
+    {w:"QUIET",t:"sessiz"},{w:"LOUD",t:"gürültülü"},{w:"SWEET",t:"tatlı"},{w:"BITTER",t:"acı"},
+    {w:"WARM",t:"ılık"},{w:"COOL",t:"serin"},{w:"DEEP",t:"derin"},{w:"WIDE",t:"geniş"},
+    {w:"HEAVY",t:"ağır"},{w:"LIGHT",t:"hafif"},{w:"EASY",t:"kolay"},{w:"DIFFICULT",t:"zor"},
+    {w:"EARLY",t:"erken"},{w:"LATE",t:"geç"},{w:"ALONE",t:"yalnız"},{w:"ALIVE",t:"canlı"},
+    {w:"REAL",t:"gerçek"},{w:"SPECIAL",t:"özel"},{w:"BEAUTIFUL",t:"güzel"},{w:"WONDERFUL",t:"muhteşem"},
+    {w:"TIRED",t:"yorgun"},{w:"SICK",t:"hasta"},{w:"ANGRY",t:"kızgın"},{w:"AFRAID",t:"korkmuş"},
+    {w:"SURE",t:"emin"},{w:"READY",t:"hazır"},{w:"LOST",t:"kaybolmuş"},{w:"BROKEN",t:"kırık"},
+    {w:"OPEN",t:"açık"},{w:"CLOSED",t:"kapalı"},{w:"FULL",t:"dolu"},{w:"EMPTY",t:"boş"},
+    {w:"DIFFERENT",t:"farklı"},{w:"SAME",t:"aynı"},{w:"TRUE",t:"doğru"},{w:"FALSE",t:"yanlış"},
+    {w:"IMPORTANT",t:"önemli"},{w:"INTERESTING",t:"ilginç"},{w:"BEAUTIFUL",t:"güzel"},
+    {w:"AMAZING",t:"şaşırtıcı"},{w:"TERRIBLE",t:"korkunç"},{w:"PERFECT",t:"mükemmel"},
+    {w:"SIMPLE",t:"basit"},{w:"COMPLEX",t:"karmaşık"},{w:"CAREFUL",t:"dikkatli"},{w:"LAZY",t:"tembel"},
+    {w:"CLEVER",t:"zeki"},{w:"STUPID",t:"aptal"},{w:"POLITE",t:"kibarlı"},{w:"RUDE",t:"kaba"},
+    {w:"FRIENDLY",t:"arkadaşcanlı"},{w:"LONELY",t:"yalnız"},{w:"PROUD",t:"gururlu"},{w:"ASHAMED",t:"utanmış"},
+    {w:"EXCITED",t:"heyecanlı"},{w:"NERVOUS",t:"gergin"},{w:"BORED",t:"sıkılmış"},{w:"SURPRISED",t:"şaşırmış"},
+    // Zarflar
+    {w:"FAST",t:"hızlıca"},{w:"SLOWLY",t:"yavaşça"},{w:"QUICKLY",t:"çabucak"},{w:"QUIETLY",t:"sessizce"},
+    {w:"LOUDLY",t:"gürültüyle"},{w:"CAREFULLY",t:"dikkatlice"},{w:"HAPPILY",t:"mutlulukla"},
+    {w:"SADLY",t:"üzülerek"},{w:"EASILY",t:"kolayca"},{w:"WELL",t:"iyi biçimde"},
+    {w:"VERY",t:"çok"},{w:"REALLY",t:"gerçekten"},{w:"QUITE",t:"oldukça"},{w:"ALMOST",t:"neredeyse"},
+    {w:"NEVER",t:"asla"},{w:"ALWAYS",t:"her zaman"},{w:"OFTEN",t:"sık sık"},{w:"SOMETIMES",t:"bazen"},
+    {w:"ALREADY",t:"zaten"},{w:"STILL",t:"hâlâ"},{w:"AGAIN",t:"tekrar"},{w:"SOON",t:"yakında"},
+    {w:"NOW",t:"şimdi"},{w:"THEN",t:"o zaman"},{w:"HERE",t:"burada"},{w:"THERE",t:"orada"},
+    {w:"TOGETHER",t:"birlikte"},{w:"ALONE",t:"yalnız başına"},{w:"OUTSIDE",t:"dışarıda"},
+    {w:"INSIDE",t:"içeride"},{w:"AWAY",t:"uzakta"},{w:"BACK",t:"geri"},{w:"FORWARD",t:"ileri"},
+    {w:"EARLY",t:"erken"},{w:"LATE",t:"geç"},{w:"FINALLY",t:"sonunda"},{w:"SUDDENLY",t:"aniden"},
+    {w:"HARD",t:"sert/zorlu"},{w:"SOFTLY",t:"yumuşakça"},{w:"DEEPLY",t:"derinden"},
+    {w:"KINDLY",t:"nazikçe"},{w:"BRAVELY",t:"cesurca"},{w:"PROUDLY",t:"gururla"},
+  ],
+  y:[ // YAPISAL: zamirler, artikel, edat, bağlaç, soru kelimeleri, yardımcı
+    // Artikel
+    {w:"THE",t:"(belirli)"},{w:"A",t:"bir"},{w:"AN",t:"bir (sesli)"},
+    // Şahıs zamirleri
+    {w:"I",t:"ben"},{w:"YOU",t:"sen"},{w:"HE",t:"o(erkek)"},{w:"SHE",t:"o(kadın)"},
+    {w:"WE",t:"biz"},{w:"THEY",t:"onlar"},{w:"IT",t:"o(nesne)"},
+    // Nesne zamirleri
+    {w:"ME",t:"beni"},{w:"HIM",t:"onu(erkek)"},{w:"HER",t:"onu(kadın)"},
+    {w:"US",t:"bizi"},{w:"THEM",t:"onları"},{w:"IT",t:"onu(nesne)"},
+    // İyelik
+    {w:"MY",t:"benim"},{w:"YOUR",t:"senin"},{w:"HIS",t:"onun(erkek)"},
+    {w:"HER",t:"onun(kadın)"},{w:"OUR",t:"bizim"},{w:"THEIR",t:"onların"},{w:"ITS",t:"onun(nesne)"},
+    // İşaret
+    {w:"THIS",t:"bu"},{w:"THAT",t:"şu/o"},{w:"THESE",t:"bunlar"},{w:"THOSE",t:"şunlar"},
+    // Edat
+    {w:"IN",t:"içinde"},{w:"ON",t:"üstünde"},{w:"AT",t:"da/de"},{w:"TO",t:"e/a"},
+    {w:"FOR",t:"için"},{w:"WITH",t:"ile"},{w:"FROM",t:"den/dan"},{w:"OF",t:"ın/in"},
+    {w:"BY",t:"tarafından"},{w:"ABOUT",t:"hakkında"},{w:"AFTER",t:"sonra"},{w:"BEFORE",t:"önce"},
+    {w:"UNDER",t:"altında"},{w:"OVER",t:"üzerinde"},{w:"BETWEEN",t:"arasında"},
+    {w:"THROUGH",t:"içinden"},{w:"AROUND",t:"etrafında"},{w:"WITHOUT",t:"olmadan"},
+    {w:"NEAR",t:"yakın"},{w:"BEHIND",t:"arkasında"},{w:"NEXT",t:"yanında"},
+    // Bağlaç
+    {w:"AND",t:"ve"},{w:"BUT",t:"ama"},{w:"OR",t:"veya"},{w:"SO",t:"yani"},
+    {w:"BECAUSE",t:"çünkü"},{w:"WHEN",t:"ne zaman"},{w:"WHILE",t:"iken"},
+    {w:"IF",t:"eğer"},{w:"ALTHOUGH",t:"her ne kadar"},{w:"UNTIL",t:"kadar"},
+    {w:"SINCE",t:"den beri"},{w:"UNLESS",t:"olmadıkça"},{w:"THAN",t:"den daha"},
+    // Soru kelimeleri
+    {w:"WHAT",t:"ne"},{w:"WHERE",t:"nerede"},{w:"WHEN",t:"ne zaman"},
+    {w:"WHY",t:"neden"},{w:"HOW",t:"nasıl"},{w:"WHO",t:"kim"},{w:"WHICH",t:"hangi"},
+    // Belirteçler
+    {w:"NOT",t:"değil"},{w:"NO",t:"hayır/hiç"},{w:"NEVER",t:"asla"},
+    {w:"EVERY",t:"her"},{w:"EACH",t:"her biri"},{w:"ALL",t:"hepsi"},
+    {w:"SOME",t:"bazı"},{w:"ANY",t:"herhangi"},{w:"BOTH",t:"her ikisi"},
+    {w:"MANY",t:"çok (sayılabilir)"},{w:"MUCH",t:"çok (sayılamaz)"},{w:"FEW",t:"az"},
+    {w:"MORE",t:"daha fazla"},{w:"MOST",t:"en fazla"},{w:"LESS",t:"daha az"},
+    {w:"ENOUGH",t:"yeterli"},{w:"TOO",t:"çok (fazla)"},{w:"ONLY",t:"sadece"},
+    {w:"JUST",t:"sadece"},{w:"EVEN",t:"bile"},{w:"ALSO",t:"ayrıca"},
+    {w:"REALLY",t:"gerçekten"},{w:"VERY",t:"çok"},{w:"QUITE",t:"oldukça"},
+    // Özel
+    {w:"PLEASE",t:"lütfen"},{w:"SORRY",t:"özür dilerim"},{w:"YES",t:"evet"},
+    {w:"LIKE",t:"gibi"},{w:"AS",t:"olarak"},{w:"THAN",t:"den daha"},
+    // Soru için
+    {w:"?",t:"soru işareti"},{w:"DO",t:"(soru yardımcısı)"},{w:"DOES",t:"(soru yardımcısı)"},
+    {w:"DID",t:"(geçmiş soru)"},{w:"IS",t:"(soru/yüklem)"},{w:"ARE",t:"(soru/yüklem)"},
+    {w:"WAS",t:"(geçmiş soru)"},{w:"WERE",t:"(geçmiş soru)"},
+  ]
+};
+
+// ===================== SENTENCE POOL (500+ cümle) =====================
+// Her cümle tipi için örnekler
+const VALID_SENTENCES = [
+  // ── OLUMLU - Geniş zaman (7-12 kelime) ──
+  {ws:["I","WALK","IN","THE","PARK","EVERY","MORNING"],tr:"Her sabah parkta yürürüm.",pts:70},
+  {ws:["SHE","READS","A","BOOK","IN","HER","ROOM"],tr:"Odasında bir kitap okur.",pts:70},
+  {ws:["HE","PLAYS","MUSIC","WITH","HIS","BEST","FRIEND"],tr:"En iyi arkadaşıyla müzik çalar.",pts:70},
+  {ws:["WE","EAT","GOOD","FOOD","WITH","OUR","FAMILY"],tr:"Ailemizle güzel yemek yeriz.",pts:70},
+  {ws:["THEY","SING","AND","DANCE","IN","THE","GARDEN"],tr:"Bahçede şarkı söyler ve dans ederler.",pts:70},
+  {ws:["MY","CAT","SLEEPS","ON","THE","SOFT","BED"],tr:"Kedim yumuşak yatakta uyur.",pts:70},
+  {ws:["THE","YOUNG","BIRD","SINGS","IN","THE","TREE"],tr:"Genç kuş ağaçta şarkı söyler.",pts:70},
+  {ws:["MY","FATHER","READS","THE","NEWS","EVERY","MORNING"],tr:"Babam her sabah haberleri okur.",pts:70},
+  {ws:["THE","SMALL","DOG","RUNS","FAST","IN","THE","PARK"],tr:"Küçük köpek parkta hızlı koşar.",pts:80},
+  {ws:["SHE","ALWAYS","SMILES","WHEN","SHE","SEES","FLOWERS"],tr:"Çiçek görünce her zaman gülümser.",pts:70},
+  {ws:["HE","FEELS","VERY","HAPPY","WITH","HIS","FAMILY"],tr:"Ailesiyle birlikte çok mutlu hisseder.",pts:70},
+  {ws:["WE","ALWAYS","HELP","EACH","OTHER","AT","SCHOOL"],tr:"Okulda birbirimize her zaman yardım ederiz.",pts:70},
+  {ws:["I","LOVE","TO","SING","AND","DANCE","TOGETHER"],tr:"Birlikte şarkı söylemeyi ve dans etmeyi severim.",pts:70},
+  {ws:["THE","CHILDREN","PLAY","HAPPILY","IN","THE","GARDEN"],tr:"Çocuklar bahçede mutlulukla oynar.",pts:70},
+  {ws:["MY","MOTHER","COOKS","BEAUTIFUL","FOOD","FOR","US"],tr:"Annem bizim için güzel yemek pişirir.",pts:70},
+  {ws:["THE","OLD","MAN","WALKS","SLOWLY","BY","THE","RIVER"],tr:"Yaşlı adam nehir kenarında yavaşça yürür.",pts:80},
+  {ws:["SHE","LOVES","TO","READ","BOOKS","IN","THE","MORNING"],tr:"Sabahları kitap okumayı sever.",pts:80},
+  {ws:["HE","GOES","TO","SCHOOL","WITH","HIS","BEST","FRIEND"],tr:"Okula en iyi arkadaşıyla gider.",pts:80},
+  {ws:["THE","BRIGHT","STAR","SHINES","IN","THE","DARK","NIGHT"],tr:"Parlak yıldız karanlık gecede parlar.",pts:80},
+  {ws:["MY","SISTER","HELPS","ME","WITH","MY","SCHOOL","WORK"],tr:"Kız kardeşim bana okul işlerimde yardım eder.",pts:80},
+  {ws:["THE","YOUNG","STUDENT","LEARNS","NEW","WORDS","EVERY","DAY"],tr:"Genç öğrenci her gün yeni kelimeler öğrenir.",pts:80},
+  {ws:["I","THINK","THE","OLD","HOUSE","IS","VERY","BEAUTIFUL"],tr:"Eski evin çok güzel olduğunu düşünüyorum.",pts:80},
+  {ws:["SHE","FEELS","CALM","AND","HAPPY","IN","THE","GARDEN"],tr:"Bahçede sakin ve mutlu hisseder.",pts:80},
+  {ws:["WE","LOVE","TO","WALK","TOGETHER","IN","THE","PARK"],tr:"Parkta birlikte yürümeyi severiz.",pts:80},
+  {ws:["MY","MOTHER","ALWAYS","TELLS","ME","BEAUTIFUL","LIFE","STORIES"],tr:"Annem bana her zaman güzel hayat hikayeleri anlatır.",pts:80},
+  {ws:["I","WANT","TO","FIND","A","GOOD","SOLUTION","TOGETHER"],tr:"Birlikte iyi bir çözüm bulmak istiyorum.",pts:80},
+  {ws:["HE","READS","A","LONG","STORY","TO","HIS","CHILD"],tr:"Çocuğuna uzun bir hikaye okur.",pts:80},
+  {ws:["WE","NEED","TO","LEARN","NEW","THINGS","EVERY","DAY"],tr:"Her gün yeni şeyler öğrenmemiz gerekiyor.",pts:80},
+  {ws:["THE","OLD","TEACHER","GIVES","A","REALLY","GOOD","LESSON"],tr:"Yaşlı öğretmen gerçekten iyi bir ders verir.",pts:80},
+  {ws:["I","FEEL","SO","CALM","WHEN","I","HEAR","MUSIC"],tr:"Müzik duyunca çok sakin hissederim.",pts:80},
+  {ws:["MY","BEST","FRIEND","ALWAYS","HELPS","ME","AT","SCHOOL"],tr:"En iyi arkadaşım okulda her zaman bana yardım eder.",pts:80},
+  {ws:["SHE","WANTS","TO","VISIT","THE","BEAUTIFUL","OLD","CITY"],tr:"O güzel eski şehri ziyaret etmek istiyor.",pts:80},
+  {ws:["I","LOVE","TO","READ","BOOKS","AND","LEARN","NEW","WORDS"],tr:"Kitap okumayı ve yeni kelimeler öğrenmeyi severim.",pts:90},
+  {ws:["HE","GOES","TO","THE","PARK","WITH","HIS","BEST","FRIEND"],tr:"En iyi arkadaşıyla parka gider.",pts:90},
+  {ws:["WE","LOVE","TO","PLAY","GAMES","TOGETHER","IN","THE","GARDEN"],tr:"Bahçede birlikte oyun oynamayı severiz.",pts:90},
+  {ws:["MY","MOTHER","MAKES","THE","BEST","FOOD","IN","THE","WORLD"],tr:"Annem dünyanın en iyi yemeğini yapar.",pts:90},
+  {ws:["I","FEEL","VERY","CALM","WHEN","I","WALK","IN","NATURE"],tr:"Doğada yürüdüğümde çok sakin hissederim.",pts:90},
+  {ws:["SHE","LOVES","TO","SING","AND","DANCE","WITH","HER","FRIENDS"],tr:"Arkadaşlarıyla şarkı söylemeyi ve dans etmeyi sever.",pts:90},
+  {ws:["HE","ALWAYS","BRINGS","A","GIFT","FOR","HIS","BEST","FRIEND"],tr:"En iyi arkadaşına her zaman hediye getirir.",pts:90},
+  {ws:["WE","NEED","EACH","OTHER","TO","BUILD","A","BETTER","WORLD"],tr:"Daha iyi bir dünya inşa etmek için birbirimize ihtiyacımız var.",pts:90},
+  {ws:["THE","BRIGHT","MOON","SHINES","OVER","THE","QUIET","CALM","SEA"],tr:"Parlak ay sessiz sakin denizin üzerinde parlar.",pts:90},
+  {ws:["I","WANT","TO","LEARN","HOW","TO","SPEAK","NEW","LANGUAGES"],tr:"Yeni diller konuşmayı öğrenmek istiyorum.",pts:90},
+  {ws:["I","LOVE","TO","WALK","IN","THE","PARK","WITH","MY","FRIEND"],tr:"Arkadaşımla parkta yürümeyi severim.",pts:100},
+  {ws:["SHE","ALWAYS","READS","A","BOOK","BEFORE","SHE","GOES","TO","SLEEP"],tr:"Uyumadan önce her zaman bir kitap okur.",pts:100},
+  {ws:["HE","FEELS","VERY","HAPPY","AND","CALM","WHEN","HE","HEARS","MUSIC"],tr:"Müzik duyunca çok mutlu ve sakin hisseder.",pts:100},
+  {ws:["WE","LOVE","TO","EAT","GOOD","FOOD","AND","TELL","FUNNY","STORIES"],tr:"Güzel yemek yemeyi ve komik hikayeler anlatmayı severiz.",pts:100},
+  {ws:["THE","OLD","TEACHER","ALWAYS","GIVES","HIS","STUDENTS","VERY","GOOD","LESSONS"],tr:"Yaşlı öğretmen her zaman çok iyi dersler verir.",pts:100},
+  {ws:["I","FEEL","SO","CALM","AND","HAPPY","WHEN","I","WALK","ALONE"],tr:"Yalnız yürüdüğümde çok sakin ve mutlu hissederim.",pts:100},
+  {ws:["HE","ALWAYS","TRIES","TO","HELP","HIS","FRIENDS","AT","EVERY","MOMENT"],tr:"Her an arkadaşlarına yardım etmeye çalışır.",pts:100},
+  {ws:["WE","NEED","TO","WORK","TOGETHER","AND","BUILD","A","BETTER","FUTURE"],tr:"Birlikte çalışıp daha iyi bir gelecek inşa etmeliyiz.",pts:100},
+
+  // ── OLUMSUZ - do not / does not / did not ──
+  {ws:["I","DO","NOT","WALK","IN","THE","PARK","EVERY","DAY"],tr:"Her gün parkta yürümem.",pts:90},
+  {ws:["SHE","DOES","NOT","EAT","MEAT","BECAUSE","SHE","IS","KIND"],tr:"Nazik olduğu için et yemez.",pts:90},
+  {ws:["HE","DOES","NOT","LIKE","COLD","WEATHER","IN","WINTER"],tr:"Kışın soğuk havayı sevmez.",pts:90},
+  {ws:["WE","DO","NOT","FORGET","OUR","BEAUTIFUL","OLD","MEMORIES"],tr:"Güzel eski anılarımızı unutmayız.",pts:90},
+  {ws:["THEY","DO","NOT","KNOW","THE","ANSWER","TO","THE","QUESTION"],tr:"Sorunun cevabını bilmiyorlar.",pts:90},
+  {ws:["I","DO","NOT","UNDERSTAND","WHY","HE","IS","SO","SAD"],tr:"Neden bu kadar üzgün olduğunu anlamıyorum.",pts:90},
+  {ws:["SHE","DOES","NOT","WANT","TO","LEAVE","HER","BEAUTIFUL","HOME"],tr:"Güzel evini terk etmek istemiyor.",pts:90},
+  {ws:["HE","DID","NOT","COME","TO","SCHOOL","BECAUSE","HE","WAS","SICK"],tr:"Hasta olduğu için okula gelmedi.",pts:100},
+  {ws:["WE","DID","NOT","FINISH","THE","WORK","BEFORE","THE","RAIN","CAME"],tr:"Yağmur gelmeden işi bitiremedik.",pts:100},
+  {ws:["THEY","DID","NOT","BELIEVE","THE","STORY","BECAUSE","IT","WAS","FALSE"],tr:"Yalan olduğu için hikayeye inanmadılar.",pts:100},
+  {ws:["I","CAN","NOT","SLEEP","BECAUSE","THE","MUSIC","IS","TOO","LOUD"],tr:"Müzik çok gürültülü olduğu için uyuyamıyorum.",pts:100},
+  {ws:["SHE","WILL","NOT","FORGET","THE","BEAUTIFUL","MOMENT","BY","THE","SEA"],tr:"Deniz kenarındaki güzel anı unutmayacak.",pts:100},
+  {ws:["HE","SHOULD","NOT","LEAVE","HIS","FRIENDS","ALONE","IN","THE","DARK"],tr:"Arkadaşlarını karanlıkta yalnız bırakmamalı.",pts:100},
+
+  // ── SORU CÜMLELERİ ──
+  {ws:["DO","YOU","WALK","IN","THE","PARK","EVERY","MORNING","?"],tr:"Her sabah parkta yürür müsün?",pts:90},
+  {ws:["DOES","SHE","SING","BEAUTIFUL","SONGS","IN","THE","MORNING","?"],tr:"Sabahları güzel şarkılar söyler mi?",pts:90},
+  {ws:["DO","THEY","PLAY","GAMES","TOGETHER","IN","THE","GARDEN","?"],tr:"Bahçede birlikte oyun oynarlar mı?",pts:90},
+  {ws:["CAN","YOU","HELP","ME","WITH","MY","SCHOOL","WORK","?"],tr:"Okul işlerimde bana yardım edebilir misin?",pts:90},
+  {ws:["WILL","SHE","COME","TO","THE","PARTY","WITH","HER","FRIEND","?"],tr:"Arkadaşıyla partiye gelecek mi?",pts:90},
+  {ws:["IS","THE","OLD","HOUSE","NEAR","THE","BEAUTIFUL","RIVER","?"],tr:"Eski ev güzel nehrin yanında mı?",pts:90},
+  {ws:["ARE","THEY","HAPPY","WITH","THEIR","NEW","LIFE","IN","THE","CITY","?"],tr:"Şehirdeki yeni hayatlarından mutlular mı?",pts:110},
+  {ws:["DID","HE","WALK","TO","SCHOOL","ALONE","IN","THE","RAIN","?"],tr:"Yağmurda okula yalnız yürüdü mü?",pts:90},
+  {ws:["WAS","SHE","HAPPY","WHEN","SHE","HEARD","THE","GOOD","NEWS","?"],tr:"İyi haberi duyunca mutlu muydu?",pts:90},
+  {ws:["SHOULD","WE","CLEAN","THE","ROOM","BEFORE","OUR","FRIENDS","COME","?"],tr:"Arkadaşlarımız gelmeden odayı temizlemeli miyiz?",pts:100},
+  {ws:["CAN","THE","OLD","TEACHER","HELP","US","WITH","THIS","DIFFICULT","QUESTION","?"],tr:"Yaşlı öğretmen bize bu zor soruyla yardım edebilir mi?",pts:110},
+  {ws:["WHY","DO","YOU","ALWAYS","COME","TO","SCHOOL","ALONE","EVERY","MORNING","?"],tr:"Neden her sabah okula hep yalnız gelirsin?",pts:110},
+  {ws:["WHERE","DOES","SHE","GO","AFTER","SCHOOL","WITH","HER","BEST","FRIEND","?"],tr:"Okul sonrası en iyi arkadaşıyla nereye gider?",pts:110},
+  {ws:["HOW","DO","THEY","LEARN","NEW","WORDS","SO","FAST","AND","EASILY","?"],tr:"Yeni kelimeleri nasıl bu kadar hızlı ve kolay öğreniyorlar?",pts:110},
+  {ws:["WHEN","WILL","HE","COME","BACK","FROM","THE","LONG","DIFFICULT","JOURNEY","?"],tr:"Uzun zorlu yolculuktan ne zaman geri dönecek?",pts:110},
+  {ws:["WHO","IS","THE","YOUNG","BRAVE","SOLDIER","STANDING","NEAR","THE","OLD","BRIDGE","?"],tr:"Eski köprünün yanında duran genç cesur asker kim?",pts:110},
+  {ws:["WHAT","DO","YOU","THINK","ABOUT","THE","BEAUTIFUL","OLD","CITY","BY","THE","SEA","?"],tr:"Deniz kenarındaki güzel eski şehir hakkında ne düşünüyorsun?",pts:120},
+
+  // ── GERUNDİF / -ING ──
+  {ws:["SHE","LOVES","SINGING","BEAUTIFUL","SONGS","IN","THE","MORNING"],tr:"Sabahları güzel şarkılar söylemeyi sever.",pts:80},
+  {ws:["HE","ENJOYS","WALKING","SLOWLY","BY","THE","QUIET","RIVER"],tr:"Sessiz nehir kenarında yavaşça yürümekten zevk alır.",pts:80},
+  {ws:["I","AM","REYOUR NAMEG","A","VERY","INTERESTING","BOOK","RIGHT","NOW"],tr:"Şu an çok ilginç bir kitap okuyorum.",pts:90},
+  {ws:["SHE","IS","DANCING","HAPPILY","WITH","HER","FRIENDS","IN","THE","GARDEN"],tr:"Arkadaşlarıyla bahçede mutlulukla dans ediyor.",pts:90},
+  {ws:["HE","IS","WALKING","FAST","BECAUSE","HE","IS","LATE","FOR","SCHOOL"],tr:"Okula geç kaldığı için hızlı yürüyor.",pts:100},
+  {ws:["WE","ARE","LEARNING","NEW","WORDS","BY","PLAYING","THIS","BEAUTIFUL","GAME"],tr:"Bu güzel oyunu oynayarak yeni kelimeler öğreniyoruz.",pts:100},
+  {ws:["THEY","ARE","BUILDING","A","NEW","HOUSE","NEAR","THE","RIVER"],tr:"Nehir kenarında yeni bir ev inşa ediyorlar.",pts:90},
+  {ws:["I","LIKE","SWIMMING","IN","THE","DEEP","COLD","SEA","IN","SUMMER"],tr:"Yazın derin soğuk denizde yüzmeyi severim.",pts:100},
+  {ws:["SHE","KEEPS","SMILING","EVEN","WHEN","LIFE","IS","HARD","AND","DIFFICULT"],tr:"Hayat zor ve güç olduğunda bile gülümsemeye devam eder.",pts:100},
+  {ws:["HE","STOPPED","RUNNING","AND","STARTED","WALKING","SLOWLY","THROUGH","THE","FOREST"],tr:"Koşmayı bırakıp ormanda yavaşça yürümeye başladı.",pts:100},
+  {ws:["LEARNING","A","NEW","LANGUAGE","IS","DIFFICULT","BUT","VERY","INTERESTING"],tr:"Yeni bir dil öğrenmek zor ama çok ilginç.",pts:90},
+  {ws:["WALKING","ALONE","IN","THE","QUIET","FOREST","MAKES","ME","FEEL","CALM"],tr:"Sessiz ormanda yalnız yürümek beni sakin hissettiriyor.",pts:100},
+  {ws:["SINGING","AND","DANCING","TOGETHER","IS","THE","BEST","WAY","TO","BE","HAPPY"],tr:"Birlikte şarkı söylemek ve dans etmek mutlu olmanın en iyi yolu.",pts:110},
+
+  // ── GEÇMİŞ ZAMAN (-ed / düzensiz) ──
+  {ws:["SHE","WALKED","SLOWLY","TO","SCHOOL","IN","THE","COLD","MORNING"],tr:"Soğuk sabahta okula yavaşça yürüdü.",pts:90},
+  {ws:["HE","SANG","A","BEAUTIFUL","SONG","FOR","HIS","BEST","FRIEND"],tr:"En iyi arkadaşı için güzel bir şarkı söyledi.",pts:90},
+  {ws:["WE","PLAYED","TOGETHER","IN","THE","GARDEN","ALL","DAY","LONG"],tr:"Bütün gün bahçede birlikte oynadık.",pts:90},
+  {ws:["SHE","COOKED","A","WONDERFUL","MEAL","FOR","HER","WHOLE","FAMILY"],tr:"Tüm ailesi için muhteşem bir yemek pişirdi.",pts:90},
+  {ws:["HE","WORKED","VERY","HARD","AND","FINALLY","FINISHED","THE","DIFFICULT","JOB"],tr:"Çok çalıştı ve sonunda zorlu işi bitirdi.",pts:100},
+  {ws:["THEY","WALKED","TOGETHER","THROUGH","THE","BEAUTIFUL","FOREST","ALL","MORNING"],tr:"Bütün sabah birlikte güzel ormandan geçerek yürüdüler.",pts:90},
+  {ws:["I","FELT","SO","HAPPY","WHEN","I","HEARD","THE","GOOD","NEWS"],tr:"İyi haberi duyunca çok mutlu hissettim.",pts:100},
+  {ws:["SHE","SAW","A","BRIGHT","STAR","IN","THE","DARK","NIGHT","SKY"],tr:"Karanlık gece gökyüzünde parlak bir yıldız gördü.",pts:100},
+  {ws:["HE","RAN","FAST","THROUGH","THE","RAIN","TO","REACH","HIS","HOME"],tr:"Evine ulaşmak için yağmurda hızlı koştu.",pts:100},
+  {ws:["WE","SANG","AND","DANCED","TOGETHER","UNTIL","THE","SUN","WENT","DOWN"],tr:"Güneş batana kadar birlikte şarkı söyleyip dans ettik.",pts:100},
+  {ws:["THEY","BUILT","A","BEAUTIFUL","HOUSE","NEAR","THE","QUIET","BLUE","SEA"],tr:"Sessiz mavi denizin yakınına güzel bir ev inşa ettiler.",pts:100},
+  {ws:["I","LEARNED","MANY","NEW","WORDS","WHILE","PLAYING","THIS","WONDERFUL","GAME"],tr:"Bu harika oyunu oynarken birçok yeni kelime öğrendim.",pts:100},
+  {ws:["SHE","FORGOT","HER","PHONE","AT","HOME","AND","CAME","BACK","QUICKLY"],tr:"Telefonunu evde unuttu ve hızla geri döndü.",pts:100},
+  {ws:["HE","TOLD","HIS","FRIENDS","A","VERY","FUNNY","STORY","ABOUT","HIS","DOG"],tr:"Arkadaşlarına köpeğiyle ilgili çok komik bir hikaye anlattı.",pts:110},
+  {ws:["THE","OLD","MAN","SAT","QUIETLY","NEAR","THE","FIRE","AND","DREAMED"],tr:"Yaşlı adam ateşin yanında sessizce oturdu ve hayal kurdu.",pts:100},
+
+  // ── GELECEK ZAMAN (will) ──
+  {ws:["I","WILL","WALK","IN","THE","PARK","WITH","YOU","TOMORROW"],tr:"Yarın seninle parkta yürüyeceğim.",pts:90},
+  {ws:["SHE","WILL","SING","A","BEAUTIFUL","SONG","AT","THE","PARTY"],tr:"Partide güzel bir şarkı söyleyecek.",pts:90},
+  {ws:["HE","WILL","HELP","HIS","FRIENDS","WITH","THE","DIFFICULT","WORK"],tr:"Arkadaşlarına zorlu işlerinde yardım edecek.",pts:90},
+  {ws:["WE","WILL","BUILD","A","BETTER","WORLD","FOR","OUR","CHILDREN"],tr:"Çocuklarımız için daha iyi bir dünya inşa edeceğiz.",pts:90},
+  {ws:["THEY","WILL","COME","BACK","FROM","THEIR","LONG","JOURNEY","SOON"],tr:"Uzun yolculuklarından yakında geri dönecekler.",pts:90},
+  {ws:["THE","YOUNG","STUDENTS","WILL","LEARN","MANY","NEW","WORDS","THIS","YEAR"],tr:"Genç öğrenciler bu yıl pek çok yeni kelime öğrenecek.",pts:100},
+  {ws:["SHE","WILL","NOT","FORGET","THE","BEAUTIFUL","DAYS","BY","THE","SEA"],tr:"Deniz kenarındaki güzel günleri unutmayacak.",pts:100},
+  {ws:["HE","WILL","TELL","HIS","CHILD","A","WONDERFUL","STORY","BEFORE","SLEEP"],tr:"Uyumadan önce çocuğuna muhteşem bir hikaye anlatacak.",pts:100},
+
+  // ── PERFECT TENSE (have/has + past participle) ──
+  {ws:["I","HAVE","WALKED","IN","THIS","BEAUTIFUL","PARK","MANY","TIMES"],tr:"Bu güzel parkta birçok kez yürüdüm.",pts:90},
+  {ws:["SHE","HAS","SUNG","MANY","BEAUTIFUL","SONGS","FOR","HER","FRIENDS"],tr:"Arkadaşları için pek çok güzel şarkı söyledi.",pts:90},
+  {ws:["HE","HAS","ALREADY","FINISHED","THE","DIFFICULT","WORK","THIS","MORNING"],tr:"Zorlu işi bu sabah çoktan bitirdi.",pts:90},
+  {ws:["WE","HAVE","BUILT","A","STRONG","AND","BEAUTIFUL","HOME","TOGETHER"],tr:"Birlikte güçlü ve güzel bir yuva inşa ettik.",pts:90},
+  {ws:["THEY","HAVE","LEARNED","MANY","NEW","WORDS","SINCE","THEY","STARTED","PLAYING"],tr:"Oynamaya başladıklarından beri pek çok yeni kelime öğrendiler.",pts:100},
+  {ws:["I","HAVE","NEVER","SEEN","SUCH","A","BEAUTIFUL","AND","BRIGHT","STAR"],tr:"Bu kadar güzel ve parlak bir yıldız hiç görmedim.",pts:100},
+  {ws:["SHE","HAS","ALWAYS","BEEN","KIND","TO","EVERY","PERSON","SHE","HAS","MET"],tr:"Tanıştığı herkese her zaman nazik davrandı.",pts:110},
+
+  // ── MODAL VERBLER (can, could, should, must, may, might, would) ──
+  {ws:["YOU","CAN","LEARN","NEW","WORDS","EASILY","BY","PLAYING","THIS","GAME"],tr:"Bu oyunu oynayarak kolayca yeni kelimeler öğrenebilirsin.",pts:100},
+  {ws:["SHE","CAN","SING","VERY","BEAUTIFULLY","AND","PLAY","THE","PIANO","WELL"],tr:"Çok güzel şarkı söyleyebilir ve piyanı iyi çalabilir.",pts:100},
+  {ws:["HE","COULD","RUN","VERY","FAST","WHEN","HE","WAS","YOUNG"],tr:"Genç olduğunda çok hızlı koşabilirdi.",pts:90},
+  {ws:["WE","SHOULD","HELP","EACH","OTHER","BECAUSE","WE","ARE","FAMILY"],tr:"Aile olduğumuz için birbirimize yardım etmeliyiz.",pts:90},
+  {ws:["YOU","MUST","LEARN","NEW","WORDS","EVERY","DAY","TO","SPEAK","WELL"],tr:"İyi konuşabilmek için her gün yeni kelimeler öğrenmelisin.",pts:100},
+  {ws:["SHE","MIGHT","COME","TO","THE","PARTY","IF","SHE","FEELS","BETTER"],tr:"Daha iyi hissederse partiye gelebilir.",pts:100},
+  {ws:["HE","WOULD","WALK","IN","THE","PARK","IF","THE","WEATHER","WERE","NICE"],tr:"Hava güzel olsaydı parkta yürürdü.",pts:110},
+  {ws:["THEY","MAY","FIND","A","BETTER","SOLUTION","IF","THEY","WORK","TOGETHER"],tr:"Birlikte çalışırlarsa daha iyi bir çözüm bulabilirler.",pts:100},
+
+  // ── IN THE GARDEN / ZARF TÜMLECI AĞIRLIKLI ──
+  {ws:["THE","CAT","SLEEPS","QUIETLY","UNDER","THE","BIG","OLD","TREE"],tr:"Kedi büyük eski ağacın altında sessizce uyur.",pts:90},
+  {ws:["THE","CHILDREN","RUN","AND","LAUGH","HAPPILY","AROUND","THE","GARDEN"],tr:"Çocuklar bahçede mutlulukla koşup gülerler.",pts:90},
+  {ws:["THE","OLD","WOMAN","SITS","QUIETLY","BY","THE","WARM","FIRE"],tr:"Yaşlı kadın sıcak ateşin yanında sessizce oturur.",pts:90},
+  {ws:["THE","YOUNG","COUPLE","WALKS","HAND","IN","HAND","BY","THE","SEA"],tr:"Genç çift deniz kenarında el ele yürür.",pts:90},
+  {ws:["THE","BIRDS","SING","LOUDLY","OUTSIDE","MY","WINDOW","EVERY","MORNING"],tr:"Kuşlar her sabah penceremde gürültüyle şarkı söyler.",pts:90},
+  {ws:["THE","FLOWERS","GROW","BEAUTIFULLY","IN","THE","WARM","SPRING","GARDEN"],tr:"Çiçekler sıcak bahar bahçesinde güzelce büyür.",pts:90},
+  {ws:["THE","SMALL","FISH","SWIM","FREELY","IN","THE","DEEP","BLUE","SEA"],tr:"Küçük balıklar derin mavi denizde özgürce yüzer.",pts:100},
+  {ws:["THE","OLD","BRIDGE","STANDS","STILL","OVER","THE","QUIET","DARK","RIVER"],tr:"Eski köprü sessiz karanlık nehrin üzerinde hâlâ duruyor.",pts:100},
+  {ws:["THE","BRAVE","SOLDIER","STANDS","PROUDLY","IN","FRONT","OF","THE","OLD","CASTLE"],tr:"Cesur asker eski kalenin önünde gururla duruyor.",pts:110},
+  {ws:["THE","HAPPY","FAMILY","EATS","TOGETHER","AROUND","THE","BIG","WOODEN","TABLE"],tr:"Mutlu aile büyük ahşap masanın etrafında birlikte yer.",pts:100},
+
+  // ── KARMAŞIK / BECAUSE / WHEN / IF / ALTHOUGH ──
+  {ws:["I","WALK","FAST","BECAUSE","I","AM","LATE","FOR","SCHOOL"],tr:"Okula geç kaldığım için hızlı yürüyorum.",pts:90},
+  {ws:["SHE","SMILES","WHEN","SHE","SEES","HER","BEST","FRIEND","AT","SCHOOL"],tr:"Okulda en iyi arkadaşını görünce gülümser.",pts:100},
+  {ws:["HE","WORKS","HARD","BECAUSE","HE","WANTS","A","BETTER","LIFE"],tr:"Daha iyi bir hayat istediği için çok çalışır.",pts:90},
+  {ws:["WE","FEEL","HAPPY","WHEN","WE","HELP","OTHER","PEOPLE","IN","NEED"],tr:"İhtiyaç içindeki insanlara yardım ettiğimizde mutlu hissederiz.",pts:100},
+  {ws:["IF","YOU","LEARN","NEW","WORDS","EVERY","DAY","YOU","WILL","SPEAK","WELL"],tr:"Her gün yeni kelimeler öğrenirsen iyi konuşursun.",pts:110},
+  {ws:["ALTHOUGH","THE","ROAD","IS","LONG","AND","DIFFICULT","SHE","KEEPS","WALKING"],tr:"Yol uzun ve zor olmasına rağmen yürümeye devam eder.",pts:110},
+  {ws:["WHEN","IT","RAINS","THE","CHILDREN","PLAY","QUIETLY","INSIDE","THE","HOUSE"],tr:"Yağmur yağdığında çocuklar evin içinde sessizce oynar.",pts:100},
+  {ws:["IF","THE","WEATHER","IS","GOOD","WE","WILL","WALK","IN","THE","PARK"],tr:"Hava güzelse parkta yürüyeceğiz.",pts:110},
+  {ws:["SHE","CRIED","BECAUSE","SHE","FORGOT","THE","WORDS","OF","THE","SONG"],tr:"Şarkının sözlerini unuttuğu için ağladı.",pts:100},
+  {ws:["HE","STOPPED","WALKING","WHEN","HE","SAW","THE","BEAUTIFUL","FLOWER"],tr:"Güzel çiçeği görünce yürümeyi durdurdu.",pts:100},
+  {ws:["ALTHOUGH","HE","WAS","TIRED","HE","KEPT","WALKING","THROUGH","THE","FOREST"],tr:"Yorgun olmasına rağmen ormanda yürümeye devam etti.",pts:110},
+  {ws:["SINCE","SHE","LEFT","THE","CITY","NOTHING","HAS","BEEN","THE","SAME"],tr:"O şehri terk ettikten beri hiçbir şey aynı olmadı.",pts:110},
+];
+
+
+// ===================== GLOBAL STATE =====================
+var db = null;
+var myPlayerId = 'p_' + Math.random().toString(36).substr(2, 9);
+var myRoomCode = null;
+var myPlayerIndex = -1;
+var isHost = false;
+var roomRef = null;
+var localState = null;
+var humanDrawn = false;
+var sentenceTiles = [];
+var selectedTileIdx = null;
+var unsubscribers = [];
+
+// ===================== FIREBASE CONFIG (gömülü) =====================
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyA27gfKA_wzFZbVpRzCo2l6eZ9wZealy8s",
+  authDomain: "kelime-okey.firebaseapp.com",
+  databaseURL: "https://kelime-okey-default-rtdb.firebaseio.com",
+  projectId: "kelime-okey",
+  storageBucket: "kelime-okey.firebasestorage.app",
+  messagingSenderId: "156391224756",
+  appId: "1:156391224756:web:e853952af6cb82abbaeee1"
+};
+
+window.onload = () => {
+  function tryInit(attempts) {
+    if (typeof firebase !== "undefined") {
+      try {
+        if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+        db = firebase.database();
+        hideConfigBanner();
+        // Save config so banner never shows
+        localStorage.setItem('fbConfig', JSON.stringify(FIREBASE_CONFIG));
+      } catch(e) { 
+        console.error('Firebase init error:', e);
+        // Still hide banner, retry silently
+        hideConfigBanner();
+        setTimeout(() => tryInit(3), 1000);
+      }
+    } else if (attempts > 0) {
+      setTimeout(() => tryInit(attempts - 1), 300);
+    } else { 
+      // Last resort - try one more time after 2s
+      setTimeout(() => {
+        if (typeof firebase !== "undefined") {
+          try {
+            if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+            db = firebase.database();
+          } catch(e) {}
+        }
+      }, 2000);
+      hideConfigBanner(); // Never show setup screen
+    }
+  }
+  tryInit(20);
+
+  const params = new URLSearchParams(window.location.search);
+  const roomFromUrl = params.get("room");
+  if (roomFromUrl) {
+    document.getElementById("roomCodeInput").value = roomFromUrl.toUpperCase();
+    showToast("🔗 Oda kodu: " + roomFromUrl.toUpperCase() + " — adını yaz ve katıl!", 4000);
+  }
+};
+
+function showConfigBanner() {
+  document.getElementById('configBanner').style.display = 'block';
+}
+function hideConfigBanner() {
+  document.getElementById('configBanner').style.display = 'none';
+}
+
+// ===================== SETUP MODAL =====================
+function showSetup() { /* disabled - config hardcoded */ }
+function closeSetup() { document.getElementById('setupModal').classList.remove('active'); }
+
+function saveFirebaseConfig() {
+  const cfg = {
+    apiKey: document.getElementById('cfgApiKey').value.trim(),
+    authDomain: document.getElementById('cfgAuthDomain').value.trim(),
+    databaseURL: document.getElementById('cfgDbUrl').value.trim(),
+    projectId: document.getElementById('cfgProjectId').value.trim(),
+    appId: document.getElementById('cfgAppId').value.trim(),
+  };
+  if (!cfg.apiKey || !cfg.databaseURL) {
+    showToast('❌ API Key ve Database URL zorunlu!'); return;
+  }
+  localStorage.setItem('fbConfig', JSON.stringify(cfg));
+  const ok = initFirebase(cfg);
+  if (ok) {
+    hideConfigBanner();
+    closeSetup();
+    showToast('✅ Firebase bağlandı! Artık oynayabilirsin.');
+  } else {
+    showToast('❌ Bağlantı hatası, bilgileri kontrol et.');
+  }
+}
+
+// ===================== HELPERS =====================
+function showToast(msg, dur=2800) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), dur);
+}
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function addLog(msg, hi=false) {
+  const log = document.getElementById('gameLog');
+  if (!log) return;
+  const d = document.createElement('div');
+  d.className = 'log-e' + (hi?' hi':'');
+  d.textContent = msg;
+  log.appendChild(d);
+  log.scrollTop = log.scrollHeight;
+}
+function shuffle(a) {
+  for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
+  return a;
+}
+function rnd4() {
+  const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let r='';for(let i=0;i<4;i++)r+=chars[Math.floor(Math.random()*chars.length)];
+  return r;
+}
+
+
+// ===================== ROOM SETTINGS =====================
+const THEMES = {
+  classic: { bg:'linear-gradient(135deg,#1a1a1e 0%,#26262e 50%,#1a1a1e 100%)', felt:'linear-gradient(135deg,rgba(60,65,70,.85),rgba(40,44,48,.95))', name:'Classic' },
+  midnight: { bg:'linear-gradient(135deg,#050510 0%,#0a0a20 50%,#050510 100%)', felt:'linear-gradient(135deg,rgba(10,20,50,.6),rgba(5,10,30,.9))', name:'Night' },
+  royal: { bg:'linear-gradient(135deg,#0f0520 0%,#1a0a30 50%,#0f0520 100%)', felt:'linear-gradient(135deg,rgba(60,10,90,.5),rgba(30,5,50,.8))', name:'Royal' },
+  ocean: { bg:'linear-gradient(135deg,#020a15 0%,#051525 50%,#020a15 100%)', felt:'linear-gradient(135deg,rgba(10,40,70,.5),rgba(5,20,50,.8))', name:'Ocean' },
+  fire:  { bg:'linear-gradient(135deg,#150202 0%,#250805 50%,#150202 100%)', felt:'linear-gradient(135deg,rgba(80,20,5,.5),rgba(50,10,5,.8))', name:'Ates' },
+  forest:{ bg:'linear-gradient(135deg,#020f02 0%,#051505 50%,#020f02 100%)', felt:'linear-gradient(135deg,rgba(10,40,10,.6),rgba(5,25,5,.9))', name:'Forest' }
+};
+
+const AI_NAMES = ['Ayse','Mehmet','Fatma','Ali','Zeynep','Kemal','Elif','Burak'];
+var roomSettings = { playerCount:4, aiSlots:{}, theme:'classic', timerDuration:45, tileCount:7 };
+var savedPlayerName = '';
+var turnTimerInterval = null;
+var turnTimerLeft = 0;
+
+function showRoomSettings() {
+  var name = document.getElementById('playerName').value.trim();
+  if (!name) { showToast('Enter your name first! 😊'); return; }
+  savedPlayerName = name;
+  document.getElementById('roomSettingsModal').classList.add('active');
+  renderAISlots();
+}
+
+function closeRoomSettings() {
+  document.getElementById('roomSettingsModal').classList.remove('active');
+}
+
+function selectPlayerCount(n) {
+  roomSettings.playerCount = n;
+  var btns = document.querySelectorAll('.player-count-btns:first-of-type .pc-btn');
+  // fallback: match by text
+  document.querySelectorAll('.player-count-btns').forEach(function(row) {
+    if(row.querySelector('.pc-btn') && !row.querySelector('[id^="timerBtn"]')) {
+      row.querySelectorAll('.pc-btn').forEach(function(btn) {
+        btn.classList.toggle('active', parseInt(btn.textContent) === n);
+      });
+    }
+  });
+  renderAISlots();
+}
+
+function renderAISlots() {
+  var n = roomSettings.playerCount;
+  var container = document.getElementById('aiSlots');
+  var colors = [
+    'linear-gradient(135deg,#e74c3c,#c0392b)',
+    'linear-gradient(135deg,#3498db,#1a5276)',
+    'linear-gradient(135deg,#2ecc71,#1a7a1a)',
+    'linear-gradient(135deg,#f39c12,#d68910)',
+    'linear-gradient(135deg,#9b59b6,#6c3483)',
+    'linear-gradient(135deg,#1abc9c,#0e8072)',
+    'linear-gradient(135deg,#e67e22,#ca6f1e)'
+  ];
+  var html = '';
+  for (var i = 1; i < n; i++) {
+    var slotKey = 'slot_' + i;
+    var aiData = roomSettings.aiSlots[slotKey];
+    var isAI = aiData ? aiData.isAI !== false : true;
+    var aiName = (aiData && aiData.name) ? aiData.name : AI_NAMES[(i-1) % AI_NAMES.length];
+    var col = colors[i % colors.length];
+    var checked = isAI ? 'checked' : '';
+    var opacity = isAI ? '' : 'opacity:.3;';
+    html += '<div class="ai-slot">';
+    html += '<div class="ai-slot-num" style="background:' + col + '">&#129302;</div>';
+    html += '<div class="ai-slot-label">Player ' + (i+1) + '</div>';
+    html += '<input class="ai-name-input" id="ainame_' + i + '" value="' + aiName + '" placeholder="AI name" style="' + opacity + '">';
+    html += '<label class="ai-toggle">';
+    html += '<input type="checkbox" id="aitoggle_' + i + '" ' + checked + ' onchange="toggleAISlot(' + i + ')">';
+    html += '<span class="ai-toggle-slider"></span>';
+    html += '</label>';
+    html += '</div>';
+  }
+  if (n <= 1 || html === '') {
+    html = '<div style="color:rgba(245,230,200,.4);text-align:center;font-size:13px;padding:10px;">Tum slotlar dolu.</div>';
+  }
+  container.innerHTML = html;
+}
+
+function toggleAISlot(i) {
+  var cb = document.getElementById('aitoggle_' + i);
+  var inp = document.getElementById('ainame_' + i);
+  var slotKey = 'slot_' + i;
+  if (!roomSettings.aiSlots[slotKey]) roomSettings.aiSlots[slotKey] = {};
+  roomSettings.aiSlots[slotKey].isAI = cb.checked;
+  if (inp) inp.style.opacity = cb.checked ? '1' : '0.3';
+}
+
+function selectTheme(theme) {
+  roomSettings.theme = theme;
+  var btns = document.querySelectorAll('.theme-btn');
+  for (var i = 0; i < btns.length; i++) {
+    var onclick = btns[i].getAttribute('onclick');
+    btns[i].classList.toggle('active', onclick === "selectTheme('" + theme + "')");
+  }
+}
+
+function selectTimer(sec) {
+  roomSettings.timerDuration = sec;
+  // Update active button
+  [0,20,30,45,60,90].forEach(function(s){
+    var btn = document.getElementById('timerBtn'+s);
+    if(btn) btn.classList.toggle('active', s===sec);
+  });
+}
+
+function applyTheme(theme) {
+  var t = THEMES[theme] || THEMES.classic;
+  document.body.style.background = t.bg;
+  var zones = document.querySelectorAll('.sentence-zone');
+  for (var i = 0; i < zones.length; i++) {
+    zones[i].style.background = t.felt;
+  }
+}
+
+async function createRoomWithSettings() {
+  var name = savedPlayerName || document.getElementById('playerName').value.trim();
+  if (!name) { showToast('⚠️ Enter your name first!'); closeRoomSettings(); return; }
+  if (!db) {
+    showToast('⏳ Firebase bağlanıyor...');
+    setTimeout(createRoomWithSettings, 2000);
+    return;
+  }
+  showToast('🔄 Creating room...');
+
+  var n = roomSettings.playerCount;
+  var aiConfig = {};
+  for (var i = 1; i < n; i++) {
+    var cb = document.getElementById('aitoggle_' + i);
+    var inp = document.getElementById('ainame_' + i);
+    var slotKey = 'slot_' + i;
+    aiConfig[slotKey] = {
+      isAI: cb ? cb.checked : true,
+      name: inp && inp.value.trim() ? inp.value.trim() : AI_NAMES[(i-1) % AI_NAMES.length]
+    };
+  }
+  roomSettings.aiSlots = aiConfig;
+  closeRoomSettings();
+
+  myRoomCode = rnd4();
+  myPlayerIndex = 0;
+  isHost = true;
+
+  try {
+    roomRef = db.ref('rooms/' + myRoomCode);
+    await roomRef.set({
+      host: myPlayerId,
+      status: 'waiting',
+      playerCount: n,
+      theme: roomSettings.theme || 'classic',
+      timerDuration: roomSettings.timerDuration || 45,
+      aiConfig: aiConfig,
+      players: {
+        [myPlayerId]: { name: name, index: 0, score: 0, handCount: 0, id: myPlayerId, isAI: false }
+      },
+      createdAt: Date.now()
+    });
+
+    roomRef.child('players/' + myPlayerId).onDisconnect().remove();
+
+    var aiCount = Object.values(aiConfig).filter(function(a) { return a.isAI; }).length;
+    var chipCount = document.getElementById('settingsChipCount');
+    var chipTheme = document.getElementById('settingsChipTheme');
+    var chipAI = document.getElementById('settingsChipAI');
+    var waitCount = document.getElementById('lobbyWaitCount');
+    if (chipCount) chipCount.textContent = '👥 ' + n + ' Players';
+    if (chipTheme) chipTheme.textContent = '🎨 ' + (THEMES[roomSettings.theme] ? THEMES[roomSettings.theme].name : 'Klasik');
+    if (chipAI) chipAI.textContent = aiCount > 0 ? '🤖 ' + aiCount + ' AI' : '🤖 No AI';
+    if (waitCount) waitCount.textContent = n;
+
+    document.getElementById('displayRoomCode').textContent = myRoomCode;
+    generateQR();
+    listenLobby();
+    try { applyTheme(roomSettings.theme || 'classic'); } catch(e2) { console.warn('theme err', e2); }
+    showScreen('lobbyScreen');
+  } catch(err) {
+    showToast('❌ Hata: ' + err.message);
+    console.error('createRoom error:', err);
+  }
+}
+
+// ===================== ROOM MANAGEMENT =====================
+async function createRoom() {
+  if (!db) { showToast('⚠️ Önce Firebase kur!'); showSetup(); return; }
+  const name = document.getElementById('playerName').value.trim();
+  if (!name) { showToast('İsmini yaz!'); return; }
+
+  myRoomCode = rnd4();
+  myPlayerIndex = 0;
+  isHost = true;
+
+  roomRef = db.ref('rooms/' + myRoomCode);
+  await roomRef.set({
+    host: myPlayerId,
+    status: 'waiting',
+    players: {
+      [myPlayerId]: { name, index: 0, score: 0, handCount: 0, id: myPlayerId }
+    },
+    createdAt: Date.now()
+  });
+
+  // Clean up on disconnect
+  roomRef.child('players/' + myPlayerId).onDisconnect().remove();
+
+  document.getElementById('displayRoomCode').textContent = myRoomCode;
+  generateQR();
+  listenLobby();
+  showScreen('lobbyScreen');
+}
+
+async function joinRoom() {
+  if (!db) { showToast('⚠️ Önce Firebase kur!'); showSetup(); return; }
+  const name = document.getElementById('playerName').value.trim();
+  if (!name) { showToast('İsmini yaz!'); return; }
+  const code = document.getElementById('roomCodeInput').value.trim().toUpperCase();
+  if (code.length !== 4) { showToast('Enter a 4-digit code!'); return; }
+
+  const snap = await db.ref('rooms/' + code).once('value');
+  if (!snap.exists()) { showToast('❌ Room not found!'); return; }
+  const room = snap.val();
+  if (room.status !== 'waiting') { showToast('❌ Oyun başlamış!'); return; }
+  const playerCount = Object.keys(room.players || {}).length;
+  if (playerCount >= 4) { showToast('❌ Room is full!'); return; }
+
+  myRoomCode = code;
+  myPlayerIndex = playerCount;
+  isHost = false;
+
+  roomRef = db.ref('rooms/' + code);
+  await roomRef.child('players/' + myPlayerId).set({
+    name, index: myPlayerIndex, score: 0, handCount: 0, id: myPlayerId
+  });
+  roomRef.child('players/' + myPlayerId).onDisconnect().remove();
+
+  document.getElementById('displayRoomCode').textContent = myRoomCode;
+  generateQR();
+  listenLobby();
+  showScreen('lobbyScreen');
+}
+
+function generateQR() {
+  const container = document.getElementById('qrContainer');
+  container.innerHTML = '';
+  const url = 'https://stellular-gelato-903cfb.netlify.app?room=' + myRoomCode;
+  try {
+    new QRCode(container, {
+      text: url,
+      width: 140, height: 140,
+      colorDark:'#2d1005', colorLight:'#fdf6e3',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  } catch(e) {
+    container.innerHTML = `<div style="color:var(--gold);text-align:center;padding:20px;">📱 Link: <br><code style="font-size:11px;">${url}</code></div>`;
+  }
+}
+
+function listenLobby() {
+  const unsub = roomRef.on('value', snap => {
+    if (!snap.exists()) { leaveRoom(); return; }
+    const room = snap.val();
+    renderLobby(room);
+    if (room.status === 'playing' && room.gameState) {
+      startLocalGame(room.gameState);
+    }
+  });
+  unsubscribers.push(() => roomRef.off('value', unsub));
+}
+
+function renderLobby(room) {
+  const totalCount = room.playerCount || 4;
+  const aiConfig = room.aiConfig || {};
+  const humanPlayers = Object.values(room.players || {}).sort((a,b)=>a.index-b.index);
+  const slots = document.getElementById('playerSlots');
+  const colors = ['linear-gradient(135deg,#e74c3c,#c0392b)','linear-gradient(135deg,#3498db,#1a5276)','linear-gradient(135deg,#2ecc71,#1a7a1a)','linear-gradient(135deg,#f39c12,#d68910)','linear-gradient(135deg,#9b59b6,#6c3483)','linear-gradient(135deg,#1abc9c,#0e8072)','linear-gradient(135deg,#e67e22,#ca6f1e)','linear-gradient(135deg,#e74c3c,#c0392b)'];
+
+  // Count how many human slots are needed (non-AI slots)
+  let humanSlots = 1; // slot 0 always human
+  for(let i=1;i<totalCount;i++){
+    const ai = aiConfig['slot_'+i];
+    if(!ai || !ai.isAI) humanSlots++;
+  }
+
+  let html = '';
+  for(let i=0;i<totalCount;i++){
+    const p = humanPlayers.find(x=>x.index===i);
+    const isMe = p && p.id === myPlayerId;
+    const aiSlot = aiConfig['slot_'+i];
+    const isAISlot = i>0 && aiSlot && aiSlot.isAI;
+
+    if(isAISlot){
+      html += '<div class="player-slot filled">' +
+        '<div class="slot-num" style="background:'+colors[i%colors.length]+'">🤖</div>' +
+        '<div class="slot-name">'+aiSlot.name+'</div>' +
+        '<span class="slot-badge" style="color:rgba(100,200,255,.7);border-color:rgba(100,200,255,.3);background:rgba(100,200,255,.1);">AI</span>' +
+        '</div>';
+    } else if(p){
+      html += '<div class="player-slot filled '+(isMe?'me':'')+'">' +
+        '<div class="slot-num" style="background:'+colors[i%colors.length]+'">👤</div>' +
+        '<div class="slot-name">'+p.name+'</div>' +
+        (isMe?'<span class="slot-badge">You</span>':'<span class="slot-badge" style="color:rgba(150,255,150,.7);border-color:rgba(150,255,150,.3);background:rgba(150,255,150,.1);">✓</span>') +
+        '</div>';
+    } else {
+      html += '<div class="player-slot">' +
+        '<div class="slot-num" style="background:rgba(255,255,255,.1);font-size:16px;">·</div>' +
+        '<div class="slot-empty">Player '+(i+1)+' bekleniyor...</div>' +
+        '</div>';
+    }
+  }
+  slots.innerHTML = html;
+
+  // Apply theme
+  if(room.theme) applyTheme(room.theme);
+
+  const humanCnt = humanPlayers.length;
+  const startBtn = document.getElementById('startBtn');
+  const status = document.getElementById('lobbyStatus');
+
+  if(humanCnt >= humanSlots){
+    status.innerHTML = '✅ All players ready!';
+    if(isHost){ startBtn.disabled=false; startBtn.textContent='🚀 Start Game!'; }
+    else { startBtn.disabled=true; startBtn.textContent='⏳ Host başlatacak...'; }
+  } else {
+    const remaining = humanSlots - humanCnt;
+    status.innerHTML = '<span class="waiting-dots"><span class="wd"></span><span class="wd"></span><span class="wd"></span></span> '+remaining+' oyuncu daha bekleniyor...';
+    startBtn.disabled=true;
+    startBtn.textContent='🚀 Start Game ('+humanCnt+'/'+humanSlots+')';
+  }
+}
+
+async function leaveRoom() {
+  unsubscribers.forEach(fn=>fn());
+  unsubscribers=[];
+  if(roomRef && myPlayerId){
+    await roomRef.child('players/'+myPlayerId).remove();
+  }
+  roomRef=null; myRoomCode=null; myPlayerIndex=-1; isHost=false;
+  localState=null; sentenceTiles=[]; selectedTileIdx=null; humanDrawn=false;
+  backToMenu();
+}
+
+function backToMenu() {
+  showScreen('menuScreen');
+}
+
+// ===================== HOST STARTS GAME =====================
+async function hostStartGame() {
+  if(!isHost || !db) return;
+  const snap = await roomRef.once('value');
+  const room = snap.val();
+  const totalCount = room.playerCount || 4;
+  const aiConfig = room.aiConfig || {};
+  
+  // Build full player list (humans + AI)
+  const humanPlayers = Object.values(room.players || {}).sort((a,b)=>a.index-b.index);
+  const allPlayers = [];
+  
+  // Fill all slots
+  for(let i=0; i<totalCount; i++){
+    const aiSlot = aiConfig['slot_'+i];
+    const isAISlot = i>0 && aiSlot && aiSlot.isAI;
+    if(isAISlot){
+      allPlayers.push({ id:'ai_'+i, name:aiSlot.name, index:i, score:0, isAI:true });
+    } else {
+      const hp = humanPlayers.find(p=>p.index===i) || humanPlayers[allPlayers.filter(p=>!p.isAI).length];
+      if(hp) allPlayers.push({...hp, index:i});
+    }
+  }
+
+  const gameState = buildInitialState(allPlayers);
+  gameState.theme = room.theme || 'classic';
+  await roomRef.update({ status:'playing', gameState });
+}
+
+function buildPool() {
+  const pool = [];
+  // Kelime önem puanına göre kopya sayısı
+  // Cümlelerde çok geçen kelimeler daha fazla kopyalanır
+  const freqMap = {};
+  VALID_SENTENCES.forEach(s => {
+    s.ws.forEach(w => { freqMap[w] = (freqMap[w]||0) + 1; });
+  });
+
+  ['r','b','k','y'].forEach(color => {
+    WORDS[color].forEach(w => {
+      // Temel kopya sayısı: sık geçenlerden daha çok
+      const freq = freqMap[w.w] || 0;
+      const copies = freq >= 10 ? 8 : freq >= 5 ? 6 : freq >= 2 ? 4 : 3;
+      for(let i = 0; i < copies; i++){
+        pool.push({w:w.w, t:w.t, c:color, id:Math.random().toString(36).substr(2,9)});
+      }
+    });
+  });
+
+  // 8 joker + 8 soru işareti joker
+  for(let i=0;i<8;i++){
+    pool.push({w:'JOKER',t:'joker',c:'joker',id:'j_'+i+'_'+Math.random().toString(36).substr(2,5)});
+    pool.push({w:'?',t:'joker(?)',c:'joker',id:'q_'+i+'_'+Math.random().toString(36).substr(2,5)});
+  }
+
+  console.log('Havuz boyutu:', pool.length, 'taş');
+  return shuffleArr(pool);
+}
+
+function buildInitialState(players) {
+  let pool = buildPool();
+  const hands = {};
+  players.forEach((p,i)=>{
+    hands[p.id] = pool.splice(0,7);
+  });
+  const discard = [pool.splice(0,1)[0]];
+  return {
+    pool,
+    discard,
+    hands,
+    players: players.map(p=>({id:p.id,name:p.name,index:p.index,score:0,isAI:p.isAI||false})),
+    currentTurn: 0,
+    round: 1,
+    status: 'playing',
+    log: ['Game started! Build a sentence from English words 🎴'],
+    lastAction: null,
+  };
+}
+
+// ===================== LOCAL GAME =====================
+function startLocalGame(gs) {
+  localState = JSON.parse(JSON.stringify(gs));
+  sentenceTiles = [];
+  selectedTileIdx = null;
+  humanDrawn = false;
+  rackSlots = null;
+  if(gs.theme) applyTheme(gs.theme);
+  showScreen('gameScreen');
+  renderGame();
+
+  // Also trigger AI immediately if first turn is AI
+  if(isHost) {
+    var firstCp = gs.players[gs.currentTurn];
+    if(firstCp && firstCp.isAI) setTimeout(()=>runAITurn(), 2000);
+  }
+
+  // Listen for state changes
+  roomRef.child('gameState').on('value', snap=>{
+    if(!snap.exists()) return;
+    const newState = snap.val();
+    if(JSON.stringify(newState)!==JSON.stringify(localState)){
+      var wasMyTurn = isMyTurn();
+      localState = JSON.parse(JSON.stringify(newState));
+      sentenceTiles = [];
+      selectedTileIdx = null;
+      humanDrawn = isMyTurn() ? humanDrawn : false;
+      if(!isMyTurn()) rackSlots = null;
+      if(newState.theme) applyTheme(newState.theme);
+      renderGame();
+      if(newState.status==='won'){ showWin(newState); stopTurnTimer(); return; }
+      if(newState.status==='playing'){
+        const dur = newState.timerDuration || 0;
+        startTurnTimer(dur, newState.currentTurn);
+        const cp = newState.players[newState.currentTurn];
+        if(cp && cp.isAI && isHost){
+          setTimeout(()=>{
+            // Double-check it's still AI's turn
+            if(localState && localState.players[localState.currentTurn] && 
+               localState.players[localState.currentTurn].isAI && isHost){
+              runAITurn();
+            }
+          }, 1200 + Math.random()*600);
+        }
+      }
+    }
+  });
+}
+
+function isMyTurn() {
+  if(!localState) return false;
+  const cp = localState.players[localState.currentTurn];
+  return cp && cp.id === myPlayerId;
+}
+
+function getMyPlayer() {
+  return localState.players.find(p=>p.id===myPlayerId);
+}
+
+function getMyHand() {
+  return localState.hands[myPlayerId] || [];
+}
+
+
+// ===================== TURN TIMER =====================
+function startTurnTimer(duration, turnIdx) {
+  stopTurnTimer();
+  var wrap = document.getElementById('topbarTimer');
+  var bar = document.getElementById('timerBar');
+  var disp = document.getElementById('timerDisplay');
+  if(!wrap) return;
+
+  if(!duration || duration === 0) {
+    wrap.style.display = 'none';
+    return;
+  }
+
+  wrap.style.display = 'flex';
+  turnTimerLeft = duration;
+
+  function tick() {
+    if(!localState || localState.status !== 'playing') { stopTurnTimer(); return; }
+    // If turn changed externally, reset
+    if(localState.currentTurn !== turnIdx) { stopTurnTimer(); return; }
+
+    var pct = (turnTimerLeft / duration) * 100;
+    bar.style.width = pct + '%';
+    disp.textContent = turnTimerLeft + 's';
+
+    if(turnTimerLeft <= 10) {
+      disp.classList.add('urgent');
+      bar.style.background = 'linear-gradient(90deg,#e74c3c,#c0392b)';
+    } else {
+      disp.classList.remove('urgent');
+      bar.style.background = 'linear-gradient(90deg,#27ae60,#f0c040,#c0392b)';
+    }
+
+    if(turnTimerLeft <= 0) {
+      stopTurnTimer();
+      if(isMyTurn()) {
+        showToast('⏰ Süre doldu! Sıra geçiyor...', 2000);
+        autoPassTurn();
+      }
+      return;
+    }
+    turnTimerLeft--;
+  }
+
+  tick();
+  turnTimerInterval = setInterval(tick, 1000);
+}
+
+function stopTurnTimer() {
+  if(turnTimerInterval) { clearInterval(turnTimerInterval); turnTimerInterval = null; }
+  var wrap = document.getElementById('topbarTimer');
+  var disp = document.getElementById('timerDisplay');
+  if(wrap) wrap.style.display = 'none';
+  if(disp) disp.classList.remove('urgent');
+  turnTimerLeft = 0;
+}
+
+async function autoPassTurn() {
+  if(!isMyTurn() || !localState || !db) return;
+  const newState = JSON.parse(JSON.stringify(localState));
+  // Auto-discard a random tile if player has drawn, else just pass
+  if(humanDrawn && getMyHand().length > 0) {
+    const hand = newState.hands[myPlayerId];
+    const di = Math.floor(Math.random() * hand.length);
+    const disc = hand.splice(di, 1)[0];
+    newState.discard = [...(newState.discard||[]), disc];
+  }
+  newState.currentTurn = (newState.currentTurn + 1) % newState.players.length;
+  newState.round = newState.currentTurn===0 ? (newState.round||1)+1 : (newState.round||1);
+  newState.log = [...(newState.log||[]), '⏰ Süre doldu, sıra geçti.'];
+  humanDrawn = false;
+  sentenceTiles = [];
+  await roomRef.child('gameState').set(newState);
+}
+
+
+// ===================== SENTENCE SUGGEST =====================
+function findPossibleSentences() {
+  var hand = getMyHand();
+  var handWords = hand.map(function(t){ return t.w; });
+  var results = [];
+  VALID_SENTENCES.forEach(function(s) {
+    var needed = s.ws.slice();
+    var avail = handWords.slice();
+    var ok = true;
+    var jokerCount = avail.filter(function(w){ return w==='JOKER'; }).length;
+    var jokersUsed = 0;
+    for(var i = 0; i < needed.length; i++){
+      var idx = avail.indexOf(needed[i]);
+      if(idx === -1){
+        var ji = avail.indexOf('JOKER');
+        if(ji !== -1){ avail.splice(ji,1); jokersUsed++; }
+        else { ok = false; break; }
+      } else { avail.splice(idx, 1); }
+    }
+    if(ok) results.push({ s: s, jokersUsed: jokersUsed });
+  });
+  // Sort by pts desc
+  results.sort(function(a,b){ return (b.s.pts||0)-(a.s.pts||0); });
+  return results;
+}
+
+function suggestBest() {
+  if(!isMyTurn() || !humanDrawn){ showToast('Draw a tile first!', 2000); return; }
+  var hand = getMyHand();
+
+  // 1. Try full valid sentences first
+  var results = findPossibleSentences();
+  if(results.length > 0){
+    var best = results[0].s;
+    sentenceTiles = [];
+    var avail = hand.slice();
+    best.ws.forEach(function(word){
+      var idx = avail.findIndex(function(t){ return t.w===word; });
+      if(idx===-1) idx = avail.findIndex(function(t){ return t.w==='JOKER'; });
+      if(idx!==-1){ sentenceTiles.push(avail[idx]); avail.splice(idx,1); }
+    });
+    // Also arrange rack so sentence tiles appear together on left
+    arrangeRackBySentence(sentenceTiles, hand);
+    renderGame();
+    showToast('⚡ Sentence ready! +' + (best.pts||0) + ' puan', 2000);
+    return;
+  }
+
+  // 2. No full sentence — smart group: find best partial matches (2+ words)
+  // Score each tile pair/triple by how often they co-occur in valid sentences
+  var coScore = buildCoScore(hand);
+  var arranged = smartArrangeRack(hand, coScore);
+  if(arranged){
+    rackSlots = null;
+    initRackSlots();
+    // Place arranged order
+    for(var i=0;i<arranged.length && i<TOTAL_SLOTS;i++) rackSlots[i] = arranged[i].id;
+    renderMyTiles();
+    showToast('🧠 Related words arranged!', 2500);
+  } else {
+    showToast('No valid sentence in your hand 😔', 2500);
+  }
+}
+
+function arrangeRackBySentence(stiles, hand) {
+  rackSlots = null;
+  initRackSlots();
+  var stileIds = stiles.map(function(t){ return t.id; });
+  var rest = hand.filter(function(t){ return stileIds.indexOf(t.id)===-1; });
+  var newOrder = stiles.concat(rest);
+  for(var i=0;i<newOrder.length && i<TOTAL_SLOTS;i++) rackSlots[i] = newOrder[i].id;
+}
+
+function buildCoScore(hand) {
+  // Count how many valid sentences contain BOTH word A and word B
+  var handWords = hand.map(function(t){ return t.w; });
+  var coMatrix = {};
+  handWords.forEach(function(w1){
+    coMatrix[w1] = coMatrix[w1] || {};
+    handWords.forEach(function(w2){
+      if(w1===w2) return;
+      var count = 0;
+      VALID_SENTENCES.forEach(function(s){
+        if(s.ws.indexOf(w1)!==-1 && s.ws.indexOf(w2)!==-1) count++;
+      });
+      coMatrix[w1][w2] = count;
+    });
+  });
+  return coMatrix;
+}
+
+function smartArrangeRack(hand, coScore) {
+  if(hand.length===0) return null;
+  // Greedy: start from highest-connected tile, build chain
+  var words = hand.map(function(t){ return t.w; });
+  
+  // Find tile with highest total co-score
+  var scores = hand.map(function(t){
+    var s = 0;
+    hand.forEach(function(t2){ if(t2.id!==t.id) s += (coScore[t.w]||{})[t2.w]||0; });
+    return {tile:t, score:s};
+  });
+  scores.sort(function(a,b){ return b.score-a.score; });
+  
+  var arranged = [];
+  var used = {};
+  var start = scores[0].tile;
+  arranged.push(start);
+  used[start.id] = true;
+  
+  // Greedily add most-related next tile
+  for(var step=0; step<hand.length-1; step++){
+    var last = arranged[arranged.length-1];
+    var best = null, bestSc = -1;
+    hand.forEach(function(t){
+      if(used[t.id]) return;
+      var sc = (coScore[last.w]||{})[t.w]||0;
+      if(sc>bestSc){ bestSc=sc; best=t; }
+    });
+    if(!best || bestSc===0){
+      // Just append remaining in original order
+      hand.forEach(function(t){ if(!used[t.id]){ arranged.push(t); used[t.id]=true; } });
+      break;
+    }
+    arranged.push(best);
+    used[best.id] = true;
+  }
+  
+  return arranged;
+}
+
+function toggleSuggest() {
+  var panel = document.getElementById('suggestPanel');
+  if(!panel) return;
+  if(panel.style.display === 'block'){
+    panel.style.display = 'none';
+    return;
+  }
+  if(!isMyTurn() || !humanDrawn){ showToast('Draw a tile first!', 2000); return; }
+  var results = findPossibleSentences();
+  var list = document.getElementById('suggestList');
+  if(results.length === 0){
+    list.innerHTML = '<div style="color:rgba(245,230,200,.3);font-style:italic;font-size:12px;padding:6px;">No matching sentence found 😔</div>';
+  } else {
+    list.innerHTML = results.slice(0,6).map(function(r, i){
+      var cls = i===0 ? 'suggest-item suggest-best' : 'suggest-item';
+      return '<div class="' + cls + '" onclick="applySuggest(' + JSON.stringify(r.s.ws) + ')">' +
+        '<span>' + r.s.ws.join(' ') + '</span>' +
+        '<span class="si-tr">' + (r.s.tr||'') + ' +' + (r.s.pts||0) + 'p</span>' +
+        '</div>';
+    }).join('');
+  }
+  panel.style.display = 'block';
+}
+
+function applySuggest(ws) {
+  sentenceTiles = [];
+  var hand = getMyHand();
+  var avail = hand.slice();
+  ws.forEach(function(word){
+    var idx = avail.findIndex(function(t){ return t.w === word; });
+    if(idx === -1) idx = avail.findIndex(function(t){ return t.w === 'JOKER'; });
+    if(idx !== -1){
+      sentenceTiles.push(avail[idx]);
+      avail.splice(idx, 1);
+    }
+  });
+  document.getElementById('suggestPanel').classList.remove('open');
+  renderGame();
+  showToast('💡 Cümle seçildi!', 1500);
+}
+
+// ===================== RENDER GAME =====================
+function renderGame() {
+  if(!localState) return;
+  const me = getMyPlayer();
+  if(!me) return;
+
+  // Turn badge
+  const cp = localState.players[localState.currentTurn];
+  document.getElementById('turnBadge').textContent = isMyTurn() ? '🎯 Your Turn!' : `⏳ ${cp.name}'s turn`;
+
+  // My score
+  // score hidden
+  document.getElementById('myHandLabel').textContent = `🃏 ${me.name} (${getMyHand().length} tiles)`;
+
+  // Pool count
+  document.getElementById('poolCount').textContent = `📦 ${(localState.pool||[]).length}`;
+
+  // Opponents
+  renderOpponents();
+
+  // My tiles
+  renderMyTiles();
+
+  // Sentence zone
+  renderSentenceZone();
+
+  // Discard
+  renderDiscard();
+
+  // Buttons
+  updateButtons();
+
+  // Log
+  if(localState.log && localState.log.length>0){
+    const log = document.getElementById('gameLog');
+    log.innerHTML = '';
+    localState.log.slice(-5).forEach(msg=>{
+      const d=document.createElement('div');
+      d.className='log-e';
+      d.textContent=msg;
+      log.appendChild(d);
+    });
+    log.scrollTop=log.scrollHeight;
+  }
+}
+
+function renderOpponents() {
+  const colors=['linear-gradient(135deg,#e74c3c,#c0392b)','linear-gradient(135deg,#3498db,#1a5276)','linear-gradient(135deg,#2ecc71,#1a7a1a)','linear-gradient(135deg,#f39c12,#d68910)','linear-gradient(135deg,#9b59b6,#6c3483)','linear-gradient(135deg,#1abc9c,#0e8072)','linear-gradient(135deg,#e67e22,#ca6f1e)'];
+  const opponents = localState.players.filter(function(p){ return p.id!==myPlayerId; });
+  
+  // Assign sides: up to 3 opponents → North, West, East
+  var sides = ['sideNorth','sideWest','sideEast'];
+  ['sideNorth','sideWest','sideEast'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.innerHTML = '';
+  });
+  
+  opponents.forEach(function(p, i) {
+    var sideId = sides[i] || 'sideNorth';
+    var sideEl = document.getElementById(sideId);
+    if(!sideEl) return;
+    
+    var isActive = localState.players[localState.currentTurn].id===p.id;
+    var handCount = (localState.hands[p.id]||[]).length;
+    var isNS = sideId==='sideNorth';
+    var isWE = !isNS;
+    
+    if(isActive) sideEl.classList.add('side-active');
+    else sideEl.classList.remove('side-active');
+    
+    // Name + score
+    var info = document.createElement('div');
+    info.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:1px;flex-shrink:0;';
+    info.innerHTML = '<div class="side-label" style="background:'+colors[p.index%colors.length]+';border-radius:4px;color:white;padding:1px 5px;font-size:9px;">'+p.name+'</div>'
+      + ''
+      + (isActive ? '<div style="font-size:9px;color:#f0c040;">🎯</div>' : '');
+    sideEl.appendChild(info);
+    
+    // Tiles
+    var tilesWrap = document.createElement('div');
+    tilesWrap.className = isNS ? 'side-tiles-h' : 'side-tiles-v';
+    var showCount = isNS ? Math.min(handCount, 12) : Math.min(handCount, 8);
+    for(var t=0; t<showCount; t++){
+      var tb = document.createElement('div');
+      tb.className = 'tile-back-sm';
+      tilesWrap.appendChild(tb);
+    }
+    if(handCount > showCount){
+      var more = document.createElement('div');
+      more.style.cssText = 'color:rgba(212,160,23,.5);font-size:9px;';
+      more.textContent = '+' + (handCount-showCount);
+      tilesWrap.appendChild(more);
+    }
+    sideEl.appendChild(tilesWrap);
+  });
+}
+
+// Rack layout: array of slots, each is tile id or null
+var rackSlots = null; // initialized when hand changes
+var RACK_COLS = 7;   // slots per row
+var RACK_ROWS_COUNT = 2;
+var TOTAL_SLOTS = RACK_COLS * RACK_ROWS_COUNT;
+var dragSrcSlot = null; // which slot we're dragging from
+
+function initRackSlots() {
+  var hand = getMyHand();
+  if (!rackSlots || rackSlots.filter(function(s){ return s!==null; }).length !== hand.length) {
+    rackSlots = [];
+    for (var i = 0; i < TOTAL_SLOTS; i++) rackSlots.push(null);
+    hand.forEach(function(tile, i) { if(i < TOTAL_SLOTS) rackSlots[i] = tile.id; });
+  }
+  // Sync: remove stale ids, add new ones
+  var handIds = hand.map(function(t){ return t.id; });
+  rackSlots = rackSlots.map(function(id){ return (id && handIds.indexOf(id)!==-1) ? id : null; });
+  handIds.forEach(function(id){
+    if(rackSlots.indexOf(id)===-1){
+      var empty = rackSlots.indexOf(null);
+      if(empty!==-1) rackSlots[empty] = id;
+    }
+  });
+}
+
+function renderMyTiles() {
+  var hand = getMyHand();
+  var rackEl = document.getElementById('rackRows');
+  if (!rackEl) return;
+  rackEl.innerHTML = '';
+  var canAct = isMyTurn() && humanDrawn;
+  var usedIds = sentenceTiles.map(function(t) { return t.id; });
+
+  initRackSlots();
+
+  var tileById = {};
+  hand.forEach(function(t){ tileById[t.id] = t; });
+
+  for (var rowIdx = 0; rowIdx < RACK_ROWS_COUNT; rowIdx++) {
+    var rowEl = document.createElement('div');
+    rowEl.className = 'rack-row';
+
+    for (var colIdx = 0; colIdx < RACK_COLS; colIdx++) {
+      var slotIdx = rowIdx * RACK_COLS + colIdx;
+      var slotEl = document.createElement('div');
+      slotEl.className = 'rack-slot';
+      slotEl.dataset.slot = slotIdx;
+
+      var tileId = rackSlots[slotIdx];
+      var tile = tileId ? tileById[tileId] : null;
+
+      if (tile) {
+        var inSentence = usedIds.indexOf(tile.id) !== -1;
+        var isSelected = (selectedTileIdx === hand.indexOf(tile));
+        var tileClass = tile.c === 'joker' ? 'joker-tile' : tile.c;
+        var wLen = tile.w.length;
+        var lenClass = wLen>=12?' len-12':wLen>=11?' len-11':wLen>=10?' len-10':wLen>=9?' len-9':wLen>=8?' len-8':'';
+
+        var el = document.createElement('div');
+        el.className = 'tile ' + tileClass + (isSelected?' selected':'') + (inSentence?' in-sentence':'');
+        el.innerHTML = '<div class="tile-w'+lenClass+'">'+tile.w+'</div><div class="tile-t">'+tile.t+'</div>';
+
+        // Click to add/remove from sentence
+        if (!inSentence) {
+          el.onclick = (function(tid, si) {
+            return function(e) {
+              if (e._wasDrag) return;
+              var realIdx = hand.findIndex(function(t){ return t.id===tid; });
+              handleTileClick(realIdx);
+            };
+          })(tile.id, slotIdx);
+        } else {
+          el.onclick = (function(tid) {
+            return function(e) {
+              if (e._wasDrag) return;
+              var si = sentenceTiles.findIndex(function(t){ return t.id===tid; });
+              if(si!==-1){ sentenceTiles.splice(si,1); renderGame(); }
+            };
+          })(tile.id);
+        }
+
+        // Drag from tile
+        el.draggable = true;
+        el.addEventListener('dragstart', (function(si, tid) {
+          return function(e) {
+            dragSrcSlot = si;
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', String(si));
+            setTimeout(function(){ el.style.opacity='0.3'; }, 0);
+          };
+        })(slotIdx, tile.id));
+        el.addEventListener('dragend', function() {
+          el.style.opacity='';
+          document.querySelectorAll('.rack-slot.drag-over').forEach(function(s){ s.classList.remove('drag-over'); });
+        });
+        el.addEventListener('click', function(e){ e._wasDrag = (dragSrcSlot !== null); });
+
+        slotEl.appendChild(el);
+      }
+
+      // Drop onto slot
+      slotEl.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        slotEl.classList.add('drag-over');
+      });
+      slotEl.addEventListener('dragleave', function() {
+        slotEl.classList.remove('drag-over');
+      });
+      slotEl.addEventListener('drop', (function(destSlot) {
+        return function(e) {
+          e.preventDefault();
+          slotEl.classList.remove('drag-over');
+          if (dragSrcSlot === null || dragSrcSlot === destSlot) { dragSrcSlot=null; return; }
+          // Swap slots
+          var tmp = rackSlots[dragSrcSlot];
+          rackSlots[dragSrcSlot] = rackSlots[destSlot];
+          rackSlots[destSlot] = tmp;
+          dragSrcSlot = null;
+          renderMyTiles();
+        };
+      })(slotIdx));
+
+      rowEl.appendChild(slotEl);
+    }
+
+    rackEl.appendChild(rowEl);
+  }
+}
+
+function renderSentenceZone() {
+  var zone = document.getElementById('szTiles');
+  zone.innerHTML = '';
+  var canAct = isMyTurn() && humanDrawn;
+
+  if (sentenceTiles.length === 0) {
+    zone.innerHTML = '<div class="sz-hint">✨ Click to select, click again to add — build a sentence with at least 7 words!</div>';
+  } else {
+    sentenceTiles.forEach(function(tile, idx) {
+      var el = document.createElement('div');
+      el.className = 'tile ' + (tile.c === 'joker' ? 'joker-tile' : tile.c);
+      var wLen = tile.w.length;
+      var lenClass = wLen >= 12 ? ' len-12' : wLen >= 11 ? ' len-11' : wLen >= 10 ? ' len-10' : wLen >= 9 ? ' len-9' : wLen >= 8 ? ' len-8' : '';
+      el.innerHTML = '<div class="tile-w' + lenClass + '">' + tile.w + '</div><div class="tile-t">' + tile.t + '</div>';
+      el.onclick = function() { removeFromSentence(idx); };
+
+
+      zone.appendChild(el);
+    });
+  }
+
+
+
+  // Show live Turkish translation of tiles
+  if (sentenceTiles.length > 0) {
+    var trLine = sentenceTiles.map(function(t){ return t.t || t.w; }).join(' · ');
+    var trDiv = document.createElement('div');
+    trDiv.style.cssText = 'text-align:center;color:rgba(245,230,200,.55);font-size:12px;font-style:italic;margin-top:4px;letter-spacing:.3px;';
+    trDiv.textContent = '🇹🇷 ' + trLine;
+    zone.appendChild(trDiv);
+  }
+
+  // Validate
+  if (sentenceTiles.length >= 3) {
+    var result = checkSentence(sentenceTiles.map(function(t) { return t.w; }));
+    var el = document.getElementById('szResult');
+    if (result) { el.className = 'sz-result valid'; el.innerHTML = '✅ <b>"' + result.tr + '"</b> — Oyna! (+' + (result.pts||0) + 'p)'; }
+    else { el.className = 'sz-result invalid'; el.textContent = '❌ Invalid sentence — reorder or add more tiles.'; }
+  } else {
+    document.getElementById('szResult').innerHTML = '';
+  }
+}
+
+function renderDiscard() {
+  const area = document.getElementById('discardArea');
+  area.innerHTML='';
+  const last = (localState.discard||[]).slice(-3);
+  last.forEach(tile=>{
+    const el=document.createElement('div');
+    el.className=`tile ${tile.c==='joker'?'joker-tile':tile.c}`;
+    el.innerHTML=`<div class="tile-w">${tile.w}</div><div class="tile-t">${tile.t}</div>`;
+    el.onclick=()=>drawFromDiscard();
+    area.appendChild(el);
+  });
+}
+
+function updateButtons() {
+  const my = isMyTurn();
+  document.getElementById('btnDraw').disabled = !my || humanDrawn;
+  document.getElementById('btnPlay').disabled = !my || !humanDrawn || sentenceTiles.length<7;
+  document.getElementById('btnDiscard').disabled = !my || !humanDrawn;
+}
+
+// ===================== GAME ACTIONS =====================
+function handleTileClick(idx) {
+  if(!isMyTurn() || !humanDrawn) return;
+
+  if(selectedTileIdx===idx){
+    // Add to sentence (keep in hand visually until played/discarded)
+    const hand = getMyHand();
+    const tile = hand[idx];
+    var alreadyAdded = sentenceTiles.some(function(t) { return t.id === tile.id; });
+    if (!alreadyAdded) {
+      sentenceTiles.push(Object.assign({}, tile));
+    }
+    selectedTileIdx=null;
+    renderGame();
+    return;
+  }
+  selectedTileIdx=idx;
+  renderGame();
+  showToast('✅ Seçildi! Tekrar tıkla → cümleye ekle', 1500);
+}
+
+function removeFromSentence(idx) {
+  if(!isMyTurn() || !humanDrawn) return;
+  sentenceTiles.splice(idx, 1);
+  selectedTileIdx = null;
+  document.getElementById('szResult').innerHTML = '';
+  renderGame();
+}
+
+async function drawFromPool() {
+  if(!isMyTurn() || humanDrawn || !db) return;
+  if((localState.pool||[]).length===0){ showToast('Pool is empty!'); return; }
+
+  const newState = JSON.parse(JSON.stringify(localState));
+  const tile = newState.pool.pop();
+  newState.hands[myPlayerId].push(tile);
+  newState.log = [...(newState.log||[]), `🎴 ${getMyPlayer().name} drew a tile.`];
+  await roomRef.child('gameState').set(newState);
+  localState = newState;
+  humanDrawn = true;
+  renderGame();
+  showToast(`🎴 "${tile.w}" (${tile.t}) çektiniz!`, 2000);
+}
+
+async function drawFromDiscard() {
+  if(!isMyTurn() || humanDrawn || !db) return;
+  if((localState.discard||[]).length===0) return;
+
+  const newState = JSON.parse(JSON.stringify(localState));
+  const tile = newState.discard.pop();
+  newState.hands[myPlayerId].push(tile);
+  newState.log = [...(newState.log||[]), `♻️ ${getMyPlayer().name} çöpten taş aldı: ${tile.w}`];
+  await roomRef.child('gameState').set(newState);
+  localState = newState;
+  humanDrawn = true;
+  renderGame();
+  showToast(`♻️ "${tile.w}" alındı!`, 2000);
+}
+
+async function playSentence() {
+  if(!isMyTurn() || !humanDrawn || !db) return;
+  if(sentenceTiles.length < 7){ showToast('En az 7 kelime gerekli! Daha uzun bir cümle kur.',3000); return; }
+  const words = sentenceTiles.map(t=>t.w);
+  const result = checkSentence(words);
+  if(!result){
+    showToast('❌ Geçersiz cümle! Örnek: I LOVE MUSIC veya THE CAT IS BIG',4000);
+    return;
+  }
+
+  const sentence = words.join(' ');
+  const me = getMyPlayer();
+
+  const newState = JSON.parse(JSON.stringify(localState));
+  newState.status = 'won';
+  newState.winner = { id:myPlayerId, name:me.name, sentence, tr:result.tr };
+  newState.log = [...(newState.log||[]), '🏆 ' + me.name + ' wins: "' + sentence + '"'];
+  trackWordUsage(words);
+  await roomRef.child('gameState').set(newState);
+}
+
+async function discardSelected() {
+  if(!isMyTurn() || !humanDrawn || !db) return;
+  if(selectedTileIdx===null){ showToast('Önce bir taş seç!',2000); return; }
+
+  const newState = JSON.parse(JSON.stringify(localState));
+
+  // Clear sentence zone (tiles stay in hand since we never removed them)
+  sentenceTiles = [];
+
+  const tile = newState.hands[myPlayerId].splice(selectedTileIdx,1)[0];
+  newState.discard = [...(newState.discard||[]), tile];
+  newState.log = [...(newState.log||[]), `🗑 ${getMyPlayer().name} "${tile.w}" attı.`];
+
+  // Next turn
+  newState.currentTurn = (newState.currentTurn+1)%4;
+  newState.round = newState.currentTurn===0 ? (newState.round||1)+1 : (newState.round||1);
+
+  // Refresh pool if empty
+  if(newState.pool.length===0 && newState.discard.length>1){
+    const last=newState.discard.pop();
+    newState.pool=shuffle([...newState.discard]);
+    newState.discard=[last];
+    newState.log=[...(newState.log||[]),'♻️ Havuz yenilendi!'];
+  }
+
+  await roomRef.child('gameState').set(newState);
+  localState=newState;
+  selectedTileIdx=null;
+  sentenceTiles=[];
+  humanDrawn=false;
+  renderGame();
+}
+
+// ===================== SENTENCE VALIDATION =====================
+function checkSentence(words) {
+  if(words.length < 7) return null;
+  const cleaned = words.map(w => w==='JOKER' ? '?' : w);
+  // First try exact match in VALID_SENTENCES list
+  for(const s of VALID_SENTENCES){
+    if(s.ws.length !== cleaned.length) continue;
+    let ok = true;
+    for(let i = 0; i < s.ws.length; i++){
+      if(cleaned[i] !== '?' && cleaned[i] !== s.ws[i]){ ok = false; break; }
+    }
+    if(ok) return s;
+  }
+  // Then try grammar rules (SVO)
+  return checkGrammar(words);
+}
+
+function checkGrammar(words) {
+  // Full English grammar engine — validates 7-12 word sentences dynamically
+  if(words.length < 7) return null;
+
+  const ALL = [...WORDS.r,...WORDS.b,...WORDS.k,...WORDS.y];
+  const trMap = {};
+  ALL.forEach(function(x){ trMap[x.w] = x.t; });
+  const tr = function(ws){ return ws.map(function(w){ return trMap[w]||w; }).join(' '); };
+
+  const w = words.map(function(x){ return (x==='JOKER'||x==='?') ? '?' : x; });
+  const len = w.length;
+  const m = function(arr, val){ return val==='?' || arr.includes(val); };
+
+  // Word category sets
+  const SUBJ   = ['I','YOU','HE','SHE','WE','THEY','IT'];
+  const ART    = ['THE','A','AN'];
+  const POSS   = ['MY','YOUR','HIS','HER','OUR','THEIR','ITS'];
+  const DET    = [...ART,...POSS,'THIS','THAT','THESE','THOSE','EVERY','EACH','SOME','ANY','NO'];
+  const LINK   = ['IS','ARE','WAS','WERE','BE'];
+  const AUX    = ['DO','DOES','DID','WILL','WOULD','CAN','COULD','SHOULD','MUST','MAY','MIGHT','SHALL'];
+  const HAVE   = ['HAVE','HAS','HAD'];
+  const NEG    = ['NOT','NEVER','NO'];
+  const NOUNS  = WORDS.b.map(function(w){ return w.w; });
+  const ADJS   = WORDS.k.map(function(w){ return w.w; });
+  const PREPS  = ['IN','ON','AT','TO','FOR','WITH','FROM','OF','BY','ABOUT','AFTER','BEFORE',
+                  'UNDER','OVER','BETWEEN','THROUGH','AROUND','WITHOUT','NEAR','BEHIND','NEXT'];
+  const CONJ   = ['AND','BUT','OR','SO','BECAUSE','WHEN','WHILE','IF','ALTHOUGH','UNTIL','SINCE','UNLESS','THAN'];
+  const WH     = ['WHAT','WHERE','WHEN','WHY','HOW','WHO','WHICH'];
+  const Q_END  = ['?'];
+
+  // Base verbs (no suffix)
+  const BASE_VERBS = WORDS.r.map(function(x){ return x.w; }).filter(function(v){
+    return !LINK.includes(v) && !AUX.includes(v) && !HAVE.includes(v);
+  });
+
+  // Rules: each returns true if pattern matches
+  const rules = [
+    // 1. Subject + action verb + ... (7+)
+    function(){ return len>=7 && m(SUBJ,w[0]) && BASE_VERBS.includes(w[1]); },
+    // 2. Subject + linking verb + ... (7+)
+    function(){ return len>=7 && m(SUBJ,w[0]) && m(LINK,w[1]); },
+    // 3. Subject + aux + verb + ... (7+)
+    function(){ return len>=7 && m(SUBJ,w[0]) && m(AUX,w[1]) && m(BASE_VERBS,w[2]); },
+    // 4. Subject + aux + NOT + verb (negative, 7+)
+    function(){ return len>=7 && m(SUBJ,w[0]) && m([...AUX,...HAVE,...LINK],w[1]) && m(NEG,w[2]); },
+    // 5. Aux/WH + subject + verb (question, ends with ?)
+    function(){ return len>=7 && (m(AUX,w[0])||m(WH,w[0])||m(LINK,w[0])) && m([...SUBJ,...DET,...ART],w[1]) && w[len-1]==='?'; },
+    // 6. Det + noun + verb + ... (7+, e.g. THE OLD MAN WALKS...)
+    function(){ return len>=7 && m(DET,w[0]) && m([...ADJS,...NOUNS],w[1]) && m(NOUNS.concat(BASE_VERBS),w[2]); },
+    // 7. Gerund start (WALKING IN THE PARK...)
+    function(){ return len>=7 && WORDS.r.some(function(x){ return x.w===w[0] && x.w.endsWith('ING'); }) && m([...PREPS,...LINK,...AUX,'IS','ARE','WAS'],w[1]); },
+    // 8. Have/has + past participle (perfect)
+    function(){ return len>=7 && m(SUBJ,w[0]) && m(HAVE,w[1]); },
+    // 9. Poss + noun + verb ... (MY MOTHER COOKS...)
+    function(){ return len>=7 && m(POSS,w[0]) && m([...NOUNS,...ADJS],w[1]); },
+  ];
+
+  for(var i=0;i<rules.length;i++){
+    if(rules[i]()) return { tr: tr(words), pts: len*10 };
+  }
+  return null;
+}
+
+
+// ===================== AI TURN =====================
+// ============ SMART AI ENGINE ============
+
+// Pre-compute word usefulness scores once
+var _aiWordScores = null;
+function getAIWordScores() {
+  if(_aiWordScores) return _aiWordScores;
+  _aiWordScores = {};
+  VALID_SENTENCES.forEach(function(s){
+    s.ws.forEach(function(w){ _aiWordScores[w] = (_aiWordScores[w]||0) + 1; });
+  });
+  return _aiWordScores;
+}
+
+// Check if hand can complete a sentence, return best match or null
+function aiFindBestSentence(handWords) {
+  var best = null;
+  var bestLen = 0;
+  for(var si = 0; si < VALID_SENTENCES.length; si++){
+    var s = VALID_SENTENCES[si];
+    if(s.ws.length < 7) continue;
+    var needed = s.ws.slice();
+    var avail = handWords.slice();
+    var ok = true;
+    for(var wi = 0; wi < needed.length; wi++){
+      var idx = avail.indexOf(needed[wi]);
+      if(idx === -1){
+        var ji = avail.indexOf('JOKER');
+        if(ji !== -1){ avail.splice(ji,1); }
+        else { ok = false; break; }
+      } else { avail.splice(idx,1); }
+    }
+    if(ok && s.ws.length > bestLen){
+      best = s;
+      bestLen = s.ws.length;
+    }
+  }
+  return best;
+}
+
+// Score a hand: how close is it to completing any sentence?
+function aiScoreHand(handWords) {
+  var scores = getAIWordScores();
+  var best = 0;
+  for(var si = 0; si < VALID_SENTENCES.length; si++){
+    var s = VALID_SENTENCES[si];
+    if(s.ws.length < 7) continue;
+    var avail = handWords.slice();
+    var matched = 0;
+    for(var wi = 0; wi < s.ws.length; wi++){
+      var idx = avail.indexOf(s.ws[wi]);
+      if(idx !== -1){ avail.splice(idx,1); matched++; }
+      else if(avail.indexOf('JOKER')!==-1){ avail.splice(avail.indexOf('JOKER'),1); matched++; }
+    }
+    var progress = matched / s.ws.length;
+    if(progress > best) best = progress;
+  }
+  return best;
+}
+
+// Choose best tile to discard: tile whose removal hurts the hand score least
+function aiChooseDiscard(hand) {
+  if(!hand || hand.length === 0) return null;
+  var handWords = hand.map(function(t){ return t.w; });
+  var scores = getAIWordScores();
+  
+  var bestIdx = 0;
+  var bestScore = -1;
+  
+  for(var i = 0; i < hand.length; i++){
+    // Try removing this tile
+    var remaining = handWords.slice();
+    remaining.splice(i, 1);
+    var score = aiScoreHand(remaining);
+    // Also factor in the word's individual usefulness (less useful = prefer to discard)
+    var wordScore = scores[hand[i].w] || 0;
+    var combinedScore = score - (wordScore * 0.001); // small penalty for useful words
+    if(combinedScore > bestScore){
+      bestScore = combinedScore;
+      bestIdx = i;
+    }
+  }
+  return bestIdx;
+}
+
+// Decide whether to draw from discard pile instead of pool
+function aiShouldDrawDiscard(hand, discardTop) {
+  if(!discardTop) return false;
+  var handWords = hand.map(function(t){ return t.w; });
+  var scores = getAIWordScores();
+  
+  // Check if discardTop helps any sentence we're close to
+  for(var si = 0; si < VALID_SENTENCES.length; si++){
+    var s = VALID_SENTENCES[si];
+    if(s.ws.indexOf(discardTop.w) === -1) continue;
+    var avail = handWords.slice();
+    var matched = 0;
+    for(var wi = 0; wi < s.ws.length; wi++){
+      var idx = avail.indexOf(s.ws[wi]);
+      if(idx !== -1){ avail.splice(idx,1); matched++; }
+    }
+    // If we already have 60%+ of this sentence, grab the discard
+    if(matched >= Math.floor(s.ws.length * 0.6)) return true;
+  }
+  return false;
+}
+
+async function runAITurn() {
+  if(!localState || localState.status!=='playing' || !db) return;
+  if(!isHost) return;
+  const cp = localState.players[localState.currentTurn];
+  if(!cp || !cp.isAI) return;
+
+  // AI personality: thinking delay based on hand complexity
+  // Gives human-like feel — longer thought when hand is complex
+  var hand = (localState.hands[cp.id] || []);
+  var handSize = hand.length;
+  
+  // Base think time: 1.5-3.5 seconds
+  var thinkTime = 1500 + Math.random() * 2000;
+  // If close to winning, "excited" — a bit faster
+  var handWords = hand.map(function(t){ return t.w; });
+  var progress = aiScoreHand(handWords);
+  if(progress > 0.8) thinkTime = 800 + Math.random() * 800;
+  // If just started, slower
+  if(handSize < 8) thinkTime = 2000 + Math.random() * 2000;
+
+  await new Promise(function(res){ setTimeout(res, thinkTime); });
+
+  // Re-check state after delay (game may have ended)
+  if(!localState || localState.status!=='playing') return;
+  const cp2 = localState.players[localState.currentTurn];
+  if(!cp2 || cp2.id !== cp.id) return;
+
+  const newState = JSON.parse(JSON.stringify(localState));
+  if(!newState.hands[cp.id]) newState.hands[cp.id] = [];
+
+  // === STEP 1: DRAW ===
+  var currentHand = newState.hands[cp.id];
+  var discardTop = newState.discard && newState.discard.length > 0 
+    ? newState.discard[newState.discard.length-1] : null;
+
+  if(aiShouldDrawDiscard(currentHand, discardTop)){
+    // Draw from discard
+    newState.hands[cp.id].push(newState.discard.pop());
+    newState.log = [...(newState.log||[]), '🤖 ' + cp.name + ' picked from discard.'];
+  } else if(newState.pool.length > 0){
+    // Draw from pool
+    newState.hands[cp.id].push(newState.pool.pop());
+  }
+
+  var updatedHand = newState.hands[cp.id];
+  var updatedWords = updatedHand.map(function(t){ return t.w; });
+
+  // === STEP 2: CHECK FOR WIN ===
+  var won = false;
+  if(updatedHand.length >= 7){
+    var bestSentence = aiFindBestSentence(updatedWords);
+    if(bestSentence){
+      newState.status = 'won';
+      newState.winner = { id:cp.id, name:cp.name, sentence:bestSentence.ws.join(' '), tr:bestSentence.tr };
+      newState.log = [...(newState.log||[]), '🤖 ' + cp.name + ' wins: "' + bestSentence.ws.join(' ') + '" 🏆'];
+      won = true;
+    }
+  }
+
+  if(!won){
+    // === STEP 3: DISCARD ===
+    // Small chance AI makes a "mistake" and discards a decent tile (human-like error ~10%)
+    var discardIdx;
+    if(Math.random() < 0.10 && updatedHand.length > 3){
+      // Random discard (mistake)
+      discardIdx = Math.floor(Math.random() * updatedHand.length);
+    } else {
+      discardIdx = aiChooseDiscard(updatedHand);
+    }
+    
+    if(discardIdx !== null){
+      var discarded = updatedHand[discardIdx];
+      newState.hands[cp.id].splice(discardIdx, 1);
+      newState.discard = [...(newState.discard||[]), discarded];
+    }
+
+    // Next turn
+    newState.currentTurn = (newState.currentTurn + 1) % newState.players.length;
+    newState.round = newState.currentTurn === 0 
+      ? (newState.round||1) + 1 : (newState.round||1);
+
+    // Reshuffle discard into pool if pool empty
+    if(newState.pool.length === 0 && (newState.discard||[]).length > 1){
+      var lastDiscard = newState.discard.pop();
+      newState.pool = shuffleArr(newState.discard.slice());
+      newState.discard = [lastDiscard];
+    }
+  }
+
+  await roomRef.child('gameState').set(newState);
+}
+
+function rackSwapTiles(fromIdx, toIdx) {
+  if(!localState) return;
+  var hand = localState.hands[myPlayerId];
+  if(!hand || fromIdx<0 || toIdx<0 || fromIdx>=hand.length || toIdx>=hand.length) return;
+  var tmp = hand[fromIdx];
+  hand[fromIdx] = hand[toIdx];
+  hand[toIdx] = tmp;
+  renderGame();
+}
+
+function shuffleArr(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+// ===================== WIN =====================
+function showWin(state) {
+  const w = state.winner;
+  if(!w) return;
+  document.getElementById('winPlayer').textContent = `🎉 ${w.name} WINS!!`;
+  document.getElementById('winSentence').textContent = `"${w.sentence}"`;
+  document.getElementById('winTr').textContent = `🇹🇷 "${w.tr}"`;
+  document.getElementById('scoresTbl').innerHTML = '';
+  showScreen('winScreen');
+}
+
+// ===================== WORD LIBRARY =====================
+var libFilter = 'all';
+var wordFavs = {};
+var wordStats = {};
+var currentWordKey = null;
+
+function loadLibData() {
+  try { wordFavs = JSON.parse(localStorage.getItem('wordFavs') || '{}'); } catch(e){ wordFavs={}; }
+  try { wordStats = JSON.parse(localStorage.getItem('wordStats') || '{}'); } catch(e){ wordStats={}; }
+}
+
+function saveLibData() {
+  localStorage.setItem('wordFavs', JSON.stringify(wordFavs));
+  localStorage.setItem('wordStats', JSON.stringify(wordStats));
+}
+
+function showTutorial() {
+  showScreen('tutorialScreen');
+}
+
+function showLibrary() {
+  loadLibData();
+  renderLibrary();
+  showScreen('libraryScreen');
+}
+
+function setLibFilter(f, btn) {
+  libFilter = f;
+  document.querySelectorAll('.lib-filter').forEach(function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+  renderLibrary();
+}
+
+var TYPE_LABELS = { r:'Fiil', b:'İsim', k:'Sıfat', y:'Other' };
+
+// Daily example sentences per word (real-life usage)
+var WORD_EXAMPLES = {
+  // Verbs
+  'LOVE':   [{en:"I love drinking Turkish coffee.",tr:"Türk kahvesi içmeyi seviyorum."},{en:"She loves reading books.",tr:"Kitap okumayı seviyor."}],
+  'HAVE':   [{en:"I have a meeting at 3 PM.",tr:"Saat ucte toplamtim var."},{en:"Do you have a pen?",tr:"Kalemen var mı?"}],
+  'MAKE':   [{en:"Can you make some tea?",tr:"Çay yapabilir misin?"},{en:"I make breakfast every morning.",tr:"Her sabah kahvaltı yaparım."}],
+  'KNOW':   [{en:"Do you know this song?",tr:"Bu şarkıyı biliyor musun?"},{en:"I know a great restaurant.",tr:"Harika bir restoran biliyorum."}],
+  'THINK':  [{en:"I think it will rain today.",tr:"Bugün yağmur yağacağını düşünüyorum."},{en:"What do you think?",tr:"Sen ne düşünüyorsun?"}],
+  'COME':   [{en:"Can you come to my party?",tr:"Partiye gelebilir misin?"},{en:"Come here, please.",tr:"Buraya gel, lütfen."}],
+  'GIVE':   [{en:"Give me a minute.",tr:"Bana bir dakika ver."},{en:"She gave me a gift.",tr:"Bana bir hediye verdi."}],
+  'TAKE':   [{en:"Take the first street on the left.",tr:"Solda ilk sokağı al."},{en:"Take a deep breath.",tr:"Derin bir nefes al."}],
+  'SEE':    [{en:"I see what you mean.",tr:"Ne demek istediğini anlıyorum."},{en:"See you tomorrow!",tr:"Yarın görüşürüz!"}],
+  'WANT':   [{en:"I want a glass of water.",tr:"Bir bardak su istiyorum."},{en:"What do you want to eat?",tr:"Ne yemek istiyorsun?"}],
+  'LOOK':   [{en:"You look great today!",tr:"Bugün harika görünüyorsun!"},{en:"Look at that view!",tr:"Şu manzaraya bak!"}],
+  'FEEL':   [{en:"I feel tired today.",tr:"Bugün yorgun hissediyorum."},{en:"How do you feel?",tr:"Nasıl hissediyorsun?"}],
+  'LIKE':   [{en:"I like your style.",tr:"Tarzını beğeniyorum."},{en:"Do you like pizza?",tr:"Pizzayı sever misin?"}],
+  'NEED':   [{en:"I need help with this.",tr:"Bununla ilgili yardıma ihtiyacım var."},{en:"We need more time.",tr:"Daha fazla zamana ihtiyacımız var."}],
+  'HELP':   [{en:"Can you help me?",tr:"Bana yardım edebilir misin?"},{en:"I helped my friend.",tr:"Arkadaşıma yardım ettim."}],
+  'WALK':   [{en:"Let's walk to the park.",tr:"Parka yürüyelim."},{en:"I walk 30 minutes every day.",tr:"Her gün 30 dakika yürüyorum."}],
+  'RUNS':   [{en:"He runs every morning.",tr:"Her sabah koşar."},{en:"The dog runs in the garden.",tr:"Köpek bahçede koşar."}],
+  'EATS':   [{en:"She eats salad for lunch.",tr:"Öğle yemeğinde salata yer."},{en:"The cat eats fish.",tr:"Kedi balık yer."}],
+  'LOVES':  [{en:"She loves cooking.",tr:"Yemek yapmayı seviyor."},{en:"He loves his family.",tr:"Ailesini seviyor."}],
+  'READS':  [{en:"She reads the news every morning.",tr:"Her sabah haberleri okur."},{en:"He reads before sleeping.",tr:"Uyumadan önce okur."}],
+  'WRITE':  [{en:"I write in my diary every night.",tr:"Her gece günlüğüme yazarım."},{en:"Write your name here.",tr:"Adını buraya yaz."}],
+  'READ':   [{en:"Read the instructions first.",tr:"Önce talimatları oku."},{en:"I read a great book last week.",tr:"Geçen hafta harika bir kitap okudum."}],
+  'TELL':   [{en:"Tell me what happened.",tr:"Ne olduğunu bana anlat."},{en:"Can you tell me the way?",tr:"Yolu söyler misin?"}],
+  // Nouns
+  'CAT':    [{en:"The cat is sleeping on the sofa.",tr:"Kedi kanepede uyuyor."},{en:"My cat loves fish.",tr:"Kedim balık seviyor."}],
+  'DOG':    [{en:"The dog is barking outside.",tr:"Köpek dışarıda havlıyor."},{en:"I walk my dog every morning.",tr:"Her sabah köpeğimi gezdiriyorum."}],
+  'BOOK':   [{en:"This book changed my life.",tr:"Bu kitap hayatımı değiştirdi."},{en:"Can I borrow your book?",tr:"Kitabını ödünç alabilir miyim?"}],
+  'HOUSE':  [{en:"Welcome to my house!",tr:"Evime hoş geldiniz!"},{en:"The house is very old.",tr:"Ev çok eski."}],
+  'WATER':  [{en:"Can I have some water?",tr:"Biraz su alabilir miyim?"},{en:"Drink more water every day.",tr:"Her gün daha fazla su için."}],
+  'FOOD':   [{en:"The food here is amazing.",tr:"Buradaki yemek müthiş."},{en:"Street food is my favorite.",tr:"Sokak yemeği favorim."}],
+  'MUSIC':  [{en:"Music makes me happy.",tr:"Müzik beni mutlu eder."},{en:"I listen to music while working.",tr:"Çalışırken müzik dinlerim."}],
+  'SCHOOL': [{en:"School starts at 8 AM.",tr:"Okul saat 8\'de başlıyor."},{en:"I loved my school years.",tr:"Okul yıllarımı çok sevdim."}],
+  'CITY':   [{en:"This city never sleeps.",tr:"Bu şehir hiç uyumaz."},{en:"I grew up in a small city.",tr:"Küçük bir şehirde büyüdüm."}],
+  'TREE':   [{en:"We sat under the tree.",tr:"Ağacın altına oturduk."},{en:"Plant a tree today.",tr:"Bugün bir ağaç dik."}],
+  'BIRD':   [{en:"A bird is singing outside.",tr:"Dışarıda bir kuş şarkı söylüyor."},{en:"Birds fly south in winter.",tr:"Kuşlar kışın güneye uçar."}],
+  'SUN':    [{en:"The sun is shining today.",tr:"Bugün güneş parlıyor."},{en:"Don't look at the sun.",tr:"Güneşe bakma."}],
+  'MOON':   [{en:"The moon is full tonight.",tr:"Bu gece dolunay var."},{en:"I can see the moon from my window.",tr:"Penceremden ayı görebiliyorum."}],
+  'FLOWER': [{en:"I bought flowers for my mother.",tr:"Annem için çiçek aldım."},{en:"The flowers smell wonderful.",tr:"Çiçekler harika kokuyor."}],
+  'FRIEND': [{en:"A good friend is hard to find.",tr:"İyi arkadaş bulmak zordur."},{en:"My best friend lives in Ankara.",tr:"En iyi arkadaşım Ankara\'da yaşıyor."}],
+  'FAMILY': [{en:"Family comes first.",tr:"Aile her şeyden önce gelir."},{en:"My family is very important to me.",tr:"Ailem benim için çok önemli."}],
+  'TEACHER':[{en:"My teacher is very patient.",tr:"Öğretmenim çok sabırlı."},{en:"She wants to be a teacher.",tr:"Öğretmen olmak istiyor."}],
+  'DREAM':  [{en:"I had a strange dream last night.",tr:"Dün gece garip bir rüya gördüm."},{en:"Never give up on your dreams.",tr:"Hayallerinden asla vazgeçme."}],
+  'HEART':  [{en:"Follow your heart.",tr:"Kalbinin sesini dinle."},{en:"She has a big heart.",tr:"Büyük bir kalbi var."}],
+  'FISH':   [{en:"We had fish for dinner.",tr:"Akşam yemeğinde balık yedik."},{en:"I love fishing on weekends.",tr:"Hafta sonları balık tutmayı severim."}],
+  'STORY':  [{en:"Tell me a story.",tr:"Bana bir hikaye anlat."},{en:"This is an interesting story.",tr:"Bu ilginç bir hikaye."}],
+  // Adjectives
+  'BIG':    [{en:"This is a big opportunity.",tr:"Bu büyük bir fırsat."},{en:"We need a bigger table.",tr:"Daha büyük bir masaya ihtiyacımız var."}],
+  'GOOD':   [{en:"Have a good day!",tr:"İyi günler!"},{en:"This is a good idea.",tr:"Bu iyi bir fikir."}],
+  'HOT':    [{en:"It is so hot today!",tr:"Bugün çok sıcak!"},{en:"Be careful, the coffee is hot.",tr:"Dikkat et, kahve sıcak."}],
+  'COLD':   [{en:"I am cold, can you close the window?",tr:"Üşüyorum, pencereyi kapar mısın?"},{en:"This water is ice cold.",tr:"Bu su buz gibi soğuk."}],
+  'FAST':   [{en:"Time goes by so fast.",tr:"Zaman çok hızlı geçiyor."},{en:"He is a fast learner.",tr:"Hızlı öğrenen biri."}],
+  'HAPPY':  [{en:"I am so happy to see you!",tr:"Seni gördüğüme çok sevindim!"},{en:"Be happy!",tr:"Mutlu ol!"}],
+  'SAD':    [{en:"I felt sad when I heard the news.",tr:"Haberi duyunca üzüldüm."},{en:"Don't be sad.",tr:"Üzülme."}],
+  'NEW':    [{en:"I have a new phone.",tr:"Yeni bir telefon aldım."},{en:"Let's try something new.",tr:"Yeni bir şey deneyelim."}],
+  'SMART':  [{en:"She is a very smart student.",tr:"Çok akıllı bir öğrenci."},{en:"That was a smart move.",tr:"Bu akıllıca bir hareketti."}],
+  'KIND':   [{en:"He is always kind to everyone.",tr:"Herkese her zaman nazik davranır."},{en:"That was very kind of you.",tr:"Bu sizin tarafınızdan çok nazikçeydi."}],
+  'NICE':   [{en:"What a nice day!",tr:"Ne güzel bir gün!"},{en:"It's nice to meet you.",tr:"Seninle tanışmak güzel."}],
+  'FUNNY':  [{en:"That joke was really funny.",tr:"O şaka gerçekten komikti."},{en:"You are so funny!",tr:"Çok komiksin!"}],
+};
+
+function renderLibrary() {
+  var search = (document.getElementById('libSearch') ? document.getElementById('libSearch').value : '').toLowerCase();
+  var allWords = [];
+  ['r','b','k','y'].forEach(function(cat) {
+    WORDS[cat].forEach(function(w) {
+      allWords.push({ w:w.w, t:w.t, cat:cat });
+    });
+  });
+
+  var filtered = allWords.filter(function(w) {
+    if (libFilter === 'fav' && !wordFavs[w.w]) return false;
+    if (libFilter !== 'all' && libFilter !== 'fav' && w.cat !== libFilter) return false;
+    if (search && w.w.toLowerCase().indexOf(search) === -1 && w.t.toLowerCase().indexOf(search) === -1) return false;
+    return true;
+  });
+
+  filtered.sort(function(a,b){ return a.w.localeCompare(b.w); });
+
+  var html = '';
+  filtered.forEach(function(w) {
+    var isFav = wordFavs[w.w];
+    var stats = wordStats[w.w] || 0;
+    html += '<div class="lib-card' + (isFav?' fav':'') + '" onclick="openWordDetail(\'' + w.w + '\',\'' + w.cat + '\')">' +
+      '<div class="lc-word ' + w.cat + '">' + w.w + '</div>' +
+      '<div class="lc-tr">' + w.t + '</div>' +
+      '<div class="lc-type">' + (TYPE_LABELS[w.cat]||'') + '</div>' +
+      (stats > 0 ? '<div class="lc-stats">🎴 ' + stats + 'x kullanıldı</div>' : '<div class="lc-stats" style="opacity:.3">Not used yet</div>') +
+      '</div>';
+  });
+
+  if (filtered.length === 0) {
+    html = '<div style="color:rgba(240,192,64,.4);text-align:center;padding:40px;font-size:16px;font-style:italic;grid-column:1/-1;">Kelime bulunamadı 🔍</div>';
+  }
+
+  document.getElementById('libGrid').innerHTML = html;
+}
+
+function openWordDetail(word, cat) {
+  currentWordKey = word;
+  var allW = [].concat(WORDS.r, WORDS.b, WORDS.k, WORDS.y);
+  var wObj = allW.find(function(x){ return x.w === word; });
+  if (!wObj) return;
+
+  document.getElementById('wbWord').textContent = word;
+  document.getElementById('wbWord').className = 'wb-word ' + cat;
+  document.getElementById('wbTr').textContent = wObj.t;
+
+  var badge = document.getElementById('wbBadge');
+  badge.textContent = TYPE_LABELS[cat] || cat;
+  badge.className = 'wb-badge ' + cat;
+
+  // Fav button
+  var favBtn = document.getElementById('wbFavBtn');
+  if (wordFavs[word]) {
+    favBtn.textContent = '♥ Remove from Favorites';
+    favBtn.classList.add('active');
+  } else {
+    favBtn.textContent = '♡ Favoritese Ekle';
+    favBtn.classList.remove('active');
+  }
+
+  // Daily examples
+  var examples = WORD_EXAMPLES[word] || [];
+  var exHtml = '';
+  if (examples.length > 0) {
+    examples.forEach(function(ex) {
+      exHtml += '<div class="wb-example"><div class="wb-ex-en">' + ex.en + '</div><div class="wb-ex-tr">' + ex.tr + '</div></div>';
+    });
+  } else {
+    exHtml = '<div style="color:rgba(245,230,200,.3);font-style:italic;font-size:13px;">Örnek cümle eklenmedi.</div>';
+  }
+  document.getElementById('wbExamples').innerHTML = exHtml;
+
+  // Game sentences
+  var gameSents = VALID_SENTENCES.filter(function(s){ return s.ws.indexOf(word) !== -1; });
+  var gsHtml = '';
+  gameSents.slice(0, 5).forEach(function(s) {
+    gsHtml += '<div class="wb-example"><div class="wb-ex-en">' + s.ws.join(' ') + '</div><div class="wb-ex-tr">' + s.tr + '</div></div>';
+  });
+  if (gsHtml === '') gsHtml = '<div style="color:rgba(245,230,200,.3);font-style:italic;font-size:13px;">Bu kelimeyle hazır cümle yok.</div>';
+  document.getElementById('wbGameSentences').innerHTML = gsHtml;
+
+  document.getElementById('wordModal').classList.add('active');
+}
+
+function toggleWordFav() {
+  if (!currentWordKey) return;
+  if (wordFavs[currentWordKey]) {
+    delete wordFavs[currentWordKey];
+    document.getElementById('wbFavBtn').textContent = '♡ Favoritese Ekle';
+    document.getElementById('wbFavBtn').classList.remove('active');
+  } else {
+    wordFavs[currentWordKey] = true;
+    document.getElementById('wbFavBtn').textContent = '♥ Remove from Favorites';
+    document.getElementById('wbFavBtn').classList.add('active');
+  }
+  saveLibData();
+  renderLibrary();
+}
+
+function closeWordModal() {
+  document.getElementById('wordModal').classList.remove('active');
+  currentWordKey = null;
+}
+
+// Track word usage when sentence is played
+function trackWordUsage(words) {
+  words.forEach(function(w) {
+    wordStats[w] = (wordStats[w] || 0) + 1;
+  });
+  saveLibData();
+}
+
+window.addEventListener('load', function() { loadLibData(); });
+
+// ===== TOUCH DRAG FOR MOBILE =====
+var touchDragSrc = null;
+var touchClone = null;
+
+function initTouchDrag() {
+  document.addEventListener('touchstart', function(e) {
+    var tile = e.target.closest('.rack-slot .tile');
+    if (!tile) return;
+    var slot = tile.closest('.rack-slot');
+    if (!slot) return;
+    touchDragSrc = parseInt(slot.dataset.slot);
+    
+    // Create ghost clone
+    touchClone = tile.cloneNode(true);
+    touchClone.style.cssText = 'position:fixed;z-index:9999;pointer-events:none;opacity:0.8;transform:scale(1.1);transition:none;';
+    var rect = tile.getBoundingClientRect();
+    touchClone.style.width = rect.width + 'px';
+    touchClone.style.height = rect.height + 'px';
+    touchClone.style.left = rect.left + 'px';
+    touchClone.style.top = rect.top + 'px';
+    document.body.appendChild(touchClone);
+    tile.style.opacity = '0.3';
+  }, {passive: true});
+
+  document.addEventListener('touchmove', function(e) {
+    if (!touchClone) return;
+    e.preventDefault();
+    var touch = e.touches[0];
+    touchClone.style.left = (touch.clientX - parseInt(touchClone.style.width)/2) + 'px';
+    touchClone.style.top = (touch.clientY - parseInt(touchClone.style.height)/2) + 'px';
+    
+    // Highlight slot under finger
+    touchClone.style.display = 'none';
+    var el = document.elementFromPoint(touch.clientX, touch.clientY);
+    touchClone.style.display = '';
+    document.querySelectorAll('.rack-slot.drag-over').forEach(function(s){ s.classList.remove('drag-over'); });
+    var overSlot = el ? el.closest('.rack-slot') : null;
+    if (overSlot) overSlot.classList.add('drag-over');
+  }, {passive: false});
+
+  document.addEventListener('touchend', function(e) {
+    if (!touchClone || touchDragSrc === null) return;
+    var touch = e.changedTouches[0];
+    
+    // Find target slot
+    touchClone.style.display = 'none';
+    var el = document.elementFromPoint(touch.clientX, touch.clientY);
+    touchClone.style.display = '';
+    
+    var overSlot = el ? el.closest('.rack-slot') : null;
+    if (overSlot && parseInt(overSlot.dataset.slot) !== touchDragSrc) {
+      var destSlot = parseInt(overSlot.dataset.slot);
+      var tmp = rackSlots[touchDragSrc];
+      rackSlots[touchDragSrc] = rackSlots[destSlot];
+      rackSlots[destSlot] = tmp;
+      renderMyTiles();
+    } else {
+      // Restore opacity
+      document.querySelectorAll('.rack-slot .tile').forEach(function(t){ t.style.opacity = ''; });
+    }
+    
+    document.querySelectorAll('.rack-slot.drag-over').forEach(function(s){ s.classList.remove('drag-over'); });
+    touchClone.remove();
+    touchClone = null;
+    touchDragSrc = null;
+  }, {passive: true});
+}
+
+
+// Init touch drag on load
+window.addEventListener('load', initTouchDrag);
+</script>
+</body>
+</html>
