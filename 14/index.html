@@ -427,7 +427,7 @@ body {
   border-bottom: 2px solid rgba(139,105,20,0.3);
   min-height: 72px;
 }
-.player-side.west, .player-side.east {
+.player-side.west, .player-side.east {position: relative;
   flex-direction: column;
   width: 85px;
   min-width: 85px;
@@ -438,7 +438,10 @@ body {
 .player-side.east { border-right: none; border-left: 2px solid rgba(139,105,20,0.2); }
 
 /* Side player label */
-.side-label {
+.side-label {position: absolute;
+top: 2px;
+left: 0;
+right: 0;
   font-family: 'Playfair Display', serif;
   font-size: 10px;
   color: var(--gold);
