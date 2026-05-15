@@ -2563,7 +2563,7 @@ function buildInitialState(players) {
   let pool = buildPool();
   const hands = {};
   players.forEach((p,i)=>{
-    hands[p.id] = pool.splice(0,7);
+    hands[p.id] = pool.splice(0,roomSettings.tileCount || 7);
   });
   const discard = [pool.splice(0,1)[0]];
   return {
