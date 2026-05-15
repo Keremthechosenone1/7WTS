@@ -2255,7 +2255,13 @@ function selectTimer(sec) {
     if(btn) btn.classList.toggle('active', s===sec);
   });
 }
-
+function selectTileCount(n) {
+  roomSettings.tileCount = n;
+  [7,11,15,19].forEach(function(s){
+    var btn = document.getElementById('tileBtn'+s);
+    if(btn) btn.classList.toggle('active', s===n);
+  });
+}
 function applyTheme(theme) {
   var t = THEMES[theme] || THEMES.classic;
   document.body.style.background = t.bg;
