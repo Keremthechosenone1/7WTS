@@ -2995,7 +2995,8 @@ var RACK_ROWS_COUNT = (roomSettings.tileCount > 11) ? 3 : 2;
 var TOTAL_SLOTS = RACK_COLS * RACK_ROWS_COUNT;
 var dragSrcSlot = null; // which slot we're dragging from
 
-function initRackSlots() {
+function initRackSlots() {RACK_ROWS_COUNT = (localState && localState.tileCount > 11) ? 3 : 2;
+TOTAL_SLOTS = RACK_COLS * RACK_ROWS_COUNT;
   var hand = getMyHand();
   if (!rackSlots || rackSlots.filter(function(s){ return s!==null; }).length !== hand.length) {
     rackSlots = [];
