@@ -568,8 +568,10 @@ body {
   border: 1px solid rgba(212,160,23,0.2);
   border-radius: 8px; padding: 6px 10px;
   flex-shrink: 0;
-max-height: 280px;
-overflow-y: auto;}
+max-height: 180px;
+overflow-y: auto;
+flex-shrink: 0;}
+
 .sz-label { color:rgba(150,255,150,.5); font-size:9px; letter-spacing:2px; text-transform:uppercase; margin-bottom:4px; }
 .sz-tiles { display:flex; flex-wrap:wrap; gap:3px; min-height:44px; align-items:center; justify-content:flex-start; }
 .sz-hint { color:rgba(150,255,150,.35); font-size:11px; font-style:italic; }
@@ -843,7 +845,7 @@ overflow-y: auto;}
   border-radius: 6px 6px 10px 10px;
   padding: 0;
   flex-shrink: 0;
-  max-height: 260px;
+  max-height: none;
   box-shadow: 0 -6px 20px rgba(0,0,0,.6), inset 0 2px 6px rgba(255,200,80,.1);
   position: relative;
   overflow: hidden;
