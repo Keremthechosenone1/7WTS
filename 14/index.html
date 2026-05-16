@@ -2525,7 +2525,7 @@ async function hostStartGame() {
   }
 
   const gameState = buildInitialState(allPlayers);
-  gameState.theme = room.theme || 'classic';
+  gameState.theme = room.theme || 'classic';gameState.tileCount = room.tileCount || 7;
   await roomRef.update({ status:'playing', gameState });
 }
 
