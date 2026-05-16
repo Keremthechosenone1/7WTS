@@ -2991,7 +2991,7 @@ function renderOpponents() {
 // Rack layout: array of slots, each is tile id or null
 var rackSlots = null; // initialized when hand changes
 var RACK_COLS = 7;   // slots per row
-var RACK_ROWS_COUNT = 2;
+var RACK_ROWS_COUNT = (roomSettings.tileCount > 11) ? 3 : 2;
 var TOTAL_SLOTS = RACK_COLS * RACK_ROWS_COUNT;
 var dragSrcSlot = null; // which slot we're dragging from
 
