@@ -2942,8 +2942,8 @@ function renderOpponents() {
   const opponents = localState.players.filter(function(p){ return p.id!==myPlayerId; });
   
   // Assign sides: up to 3 opponents → North, West, East
-  var sides = ['sideNorth','sideWest','sideEast'];
-  ['sideNorth','sideWest','sideEast'].forEach(function(id){
+  var sides = ['sideWest','sideNorth','sideEast'];
+  ['sideWest','sideNorth','sideEast'].forEach(function(id){
     var el = document.getElementById(id);
     if(el) el.innerHTML = '';
   });
