@@ -1298,6 +1298,11 @@ input, select, textarea {
       <div class="timer-bar-wrap" style="width:70px;"><div class="timer-bar" id="timerBar"></div></div>
       <div class="timer-display" id="timerDisplay">--</div>
     </div>
+    <div class="action-col" style="display:flex;flex-direction:column;gap:4px;margin-right:8px;">
+<button class="abtn abtn-draw" id="btnDraw" onclick="drawFromPool()">🎴 Draw</button>
+<button class="abtn abtn-play" id="btnPlay" onclick="playSentence()">✅ Play</button>
+<button class="abtn abtn-discard" id="btnDiscard" onclick="discardSelected()">🗑 Discard</button>
+</div>
     <button onclick="leaveRoom()" style="padding:4px 10px;font-size:11px;border-radius:6px;background:transparent;border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.5);cursor:pointer;">← Exit</button>
   </div>
 
@@ -1331,11 +1336,7 @@ input, select, textarea {
           </div>
           <div class="pool-count" id="poolCount">📦</div>
           <div class="discard-area" id="discardArea"></div>
-          <div class="action-col">
-            <button class="abtn abtn-draw" id="btnDraw" onclick="drawFromPool()">🎴 Draw</button>
-            <button class="abtn abtn-play" id="btnPlay" onclick="playSentence()">✅ Play</button>
-            <button class="abtn abtn-discard" id="btnDiscard" onclick="discardSelected()">🗑 Discard</button>
-          </div>
+          
         </div>
 
         <!-- Log -->
