@@ -1298,7 +1298,7 @@ input, select, textarea {
       <div class="timer-bar-wrap" style="width:70px;"><div class="timer-bar" id="timerBar"></div></div>
       <div class="timer-display" id="timerDisplay">--</div>
     </div>
-    <div class="action-col" style="display:flex;flex-direction:column;gap:4px;margin-right:8px;">
+    <div class="action-col" style="position:fixed;top:60px;right:8px;z-index:999;display:flex;flex-direction:column;gap:4px;">
 <button class="abtn abtn-draw" id="btnDraw" onclick="drawFromPool()">🎴 Draw</button>
 <button class="abtn abtn-play" id="btnPlay" onclick="playSentence()">✅ Play</button>
 <button class="abtn abtn-discard" id="btnDiscard" onclick="discardSelected()">🗑 Discard</button>
