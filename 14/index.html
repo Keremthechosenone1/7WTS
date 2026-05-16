@@ -2308,6 +2308,7 @@ async function createRoomWithSettings() {
       theme: roomSettings.theme || 'classic',
       timerDuration: roomSettings.timerDuration || 45,
       aiConfig: aiConfig,
+      tileCount: roomSettings.tileCount || 7,
       players: {
         [myPlayerId]: { name: name, index: 0, score: 0, handCount: 0, id: myPlayerId, isAI: false }
       },
