@@ -3128,7 +3128,29 @@ function renderMyTiles() {
 }
 
 function renderSentenceZone() {
-  var zone = document.getElementById('szTiles');
+  var zone = document.getElementById('szTiles');zone.addEventListener('dragover', function(e) {
+  e.preventDefault();
+  zone.classList.add('drag-active');
+});
+zone.addEventListener('dragleave', function() {
+  zone.classList.remove('drag-active');
+});
+zone.addEventListener('drop', function(e) {
+  e.preventDefault();
+  zone.classList.remove('drag-active');
+  if(dragSrcSlot === null) return;
+  var tileId = rackSlots[dragSrcSlot];
+  if(!tileId) return;
+  var hand = getMyHand();
+  var tile = hand.find(function(t){ return t.id === tileId; });
+  if(!tile) return;
+  var already = sentenceTiles.some(function(t){ return t.id === tileId; });
+  if(!already) {
+    sentenceTiles.push(Object.assign({}, tile));
+    renderGame();
+  }
+  dragSrcSlot = null;
+});
   zone.innerHTML = '';
   var canAct = isMyTurn() && humanDrawn;
 
