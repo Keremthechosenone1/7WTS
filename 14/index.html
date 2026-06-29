@@ -37,6 +37,9 @@ function initTouchDrag() {
     touchClone.style.top = rect.top + 'px';
     document.body.appendChild(touchClone);
     tile.style.opacity = '0.3';
+    if(isMyTurn)= && humanDrawn) {
+  document.getElementById('discardDrop').classList.add('visible');
+}
   }, {passive: true});
 
   document.addEventListener('touchmove', function(e) {
@@ -63,7 +66,22 @@ function initTouchDrag() {
     touchClone.style.display = 'none';
     var el = document.elementFromPoint(touch.clientX, touch.clientY);
     touchClone.style.display = '';
-    
+    var discardEl = el ? el.closest('#discardDrop') : null;
+if(discardEl) {
+  discardEl.classList.remove('visible','over');
+  discardEl.classList.add('pop');
+  setTimeout(function(){ discardEl.classList.remove('pop'); }, 400);
+  if(touchDragSrc !== null) {
+    var tileId = rackSlots[touchDragSrc];
+    if(tileId) {
+      var hand = getMyHand();
+      var idx = hand.findIndex(function(t){ return t.id===tileId; });
+      if(idx !== -1) { selectedTileIdx = idx; discardSelected(); }
+    }
+  }
+  touchClone.remove(); touchClone = null; touchDragSrc = null;
+  return;
+}
     var overSlot = el ? el.closest('.rack-slot') : null;
     if (overSlot && parseInt(overSlot.dataset.slot) !== touchDragSrc) {
       var destSlot = parseInt(overSlot.dataset.slot);
