@@ -1645,21 +1645,23 @@ input, select, textarea {
 </div>
 <div class="word-modal" id="aboutModal">
   <div class="word-box" style="max-width:380px;">
-    <div style="font-family:'Playfair Display',serif;font-size:24px;font-weight:900;color:var(--gold-light);text-align:center;margin-bottom:20px;letter-spacing:2px;">ℹ️ HAKKINDA</div>
-    <div class="wb-section">
-      <h3>🎯 Oyunun Amacı</h3>
-      <p style="color:rgba(245,230,200,.75);font-size:14px;line-height:1.8;">Eğlenceli ve eğitici bir şekilde İngilizce öğrenme ve geliştirme.</p>
-    </div>
-    <div class="wb-section">
-      <h3>💡 Kimin Fikri?</h3>
-      <p style="color:var(--gold);font-family:'Playfair Display',serif;font-size:16px;">Cemil Kipel</p>
-    </div>
-    <div class="wb-section">
-      <h3>👨‍💻 Kim Yaptı?</h3>
-      <p style="color:var(--gold);font-family:'Playfair Display',serif;font-size:16px;">Developer: Kerem Erdoğan</p>
-    </div>
-    <button class="btn btn-outline" onclick="closeAbout()" style="margin-top:8px;">✕ Kapat</button>
+  <div style="font-family:'Playfair Display',serif;font-size:24px;font-weight:900;color:var(--gold-light);text-align:center;margin-bottom:24px;letter-spacing:2px;">
+    <span style="display:inline-block;animation:float 2s ease-in-out infinite;">🎴</span> HAKKINDA
   </div>
+  <div style="background:rgba(0,0,0,.3);border-radius:12px;padding:16px;margin-bottom:12px;">
+    <div style="color:rgba(150,255,150,.7);font-size:11px;letter-spacing:2px;margin-bottom:8px;">🎯 OYUNUN AMACI</div>
+    <div style="color:var(--cream);font-size:15px;line-height:1.8;">Eğlenceli ve eğitici bir şekilde İngilizce öğrenme ve geliştirme.</div>
+  </div>
+  <div style="background:rgba(0,0,0,.3);border-radius:12px;padding:16px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;">
+    <div style="color:rgba(150,255,150,.7);font-size:11px;letter-spacing:2px;">💡 KİMİN FİKRİ?</div>
+    <div style="color:var(--gold);font-family:'Playfair Display',serif;font-size:16px;font-weight:700;">Cemil Kipel</div>
+  </div>
+  <div style="background:rgba(0,0,0,.3);border-radius:12px;padding:16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;">
+    <div style="color:rgba(150,255,150,.7);font-size:11px;letter-spacing:2px;">👨‍💻 KİM YAPTI?</div>
+    <div style="color:var(--gold);font-family:'Playfair Display',serif;font-size:16px;font-weight:700;">Kerem Erdoğan</div>
+  </div>
+  <button class="btn btn-outline" onclick="closeAbout()" style="margin-top:4px;">✕ Kapat</button>
+</div>
 </div>
 <!-- Toast -->
 <div class="toast" id="toast"></div>
