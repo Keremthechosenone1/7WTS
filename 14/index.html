@@ -1243,18 +1243,7 @@ input, select, textarea {
 .discard-zone-drop.over { background:rgba(192,57,43,0.5); transform:translateX(-50%) scale(1.2); }
 @keyframes trashPop { 0%,100%{transform:translateX(-50%) scale(1)} 50%{transform:translateX(-50%) scale(1.4)} }
 .discard-zone-drop.pop { animation:trashPop .4s ease; }
-  @media (max-width: 768px) and (orientation: portrait) {
-  #gameScreen {
-    transform: rotate(90deg) translateX(0);
-    transform-origin: left top;
-    width: 100vh;
-    height: 100vw;
-    position: fixed;
-    top: 0;
-    left: 0;
-    overflow: hidden;
-  }
-}
+
 </style>
 </head>
 <body>
@@ -4002,12 +3991,7 @@ document.getElementById('discardDrop').addEventListener('drop', function(e){
   dragSrcSlot = null;
   discardSelected();
 });
-  function lockLandscape() {
-  if(screen.orientation && screen.orientation.lock) {
-    screen.orientation.lock('landscape').catch(function(){});
-  }
-}
-window.addEventListener('load', lockLandscape);
+  
 // Init touch drag on load
 window.addEventListener('load', initTouchDrag);
 </script>
