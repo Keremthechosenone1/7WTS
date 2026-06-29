@@ -3166,7 +3166,8 @@ el.addEventListener('dragend', function() {
 }
 
 function renderSentenceZone() {
-  var zone = document.getElementById('szTiles');zone.addEventListener('dragover', function(e) {
+  var zone = document.getElementById('szTiles');
+  zone.addEventListener('dragover', function(e) {
   e.preventDefault();
   zone.classList.add('drag-active');
 });
