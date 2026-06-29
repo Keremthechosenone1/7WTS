@@ -3332,7 +3332,7 @@ async function playSentence() {
   await roomRef.child('gameState').set(newState);
 }
 
-async function discardSelected() 
+async function discardSelected() { 
   document.getElementById('discardDrop').classList.remove('visible','over');
   if(!isMyTurn() || !humanDrawn || !db) return;
   if(selectedTileIdx===null){ showToast('Önce bir taş seç!',2000); return; }
