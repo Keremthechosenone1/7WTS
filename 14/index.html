@@ -1214,11 +1214,21 @@ input, select, textarea {
   .rack-rows { max-height: 140px; overflow-y: auto; }
   .sentence-zone { min-height: 60px; }
 }
-
+.discard-zone-drop {
+  position:fixed; bottom:180px; left:50%; transform:translateX(-50%);
+  width:70px; height:70px; border-radius:50%;
+  background:rgba(192,57,43,0.15); border:2px dashed rgba(192,57,43,0.4);
+  display:none; align-items:center; justify-content:center;
+  font-size:32px; z-index:998; transition:all .2s;
+}
+.discard-zone-drop.visible { display:flex; }
+.discard-zone-drop.over { background:rgba(192,57,43,0.5); transform:translateX(-50%) scale(1.2); }
+@keyframes trashPop { 0%,100%{transform:translateX(-50%) scale(1)} 50%{transform:translateX(-50%) scale(1.4)} }
+.discard-zone-drop.pop { animation:trashPop .4s ease; }
 </style>
 </head>
 <body>
-
+<div class="discard-zone-drop" id="discardDrop">🗑️</div>
 <!-- Config Banner -->
 <div id="configBanner">
   ⚠️ Firebase henüz ayarlanmadı! <a href="#" onclick="showSetup()">Buraya tıkla ve 5 dakikada kur →</a>
@@ -1257,7 +1267,9 @@ input, select, textarea {
       <button class="btn btn-outline" style="flex:1;font-size:13px;padding:10px;" onclick="showTutorial()">📖 How to Play?</button>
       <button class="btn btn-outline" style="width:auto;padding:10px 14px;font-size:13px;" onclick="showRoomSettings()">⚙️</button>
     </div>
-  </div>
+  </div><div style="margin-top:8px;">
+  <button class="btn btn-outline" onclick="showAbout()" style="font-size:13px;padding:10px;">ℹ️ Hakkında</button>
+</div>
 </div>
 
 <!-- ===================== LOBBY SCREEN ===================== -->
@@ -1628,6 +1640,28 @@ input, select, textarea {
       Ayarlar tarayıcıda saklanır. Netlify'a yüklerken bu adımı tekrar yapman gerekmez — config'i HTML dosyasına göm.
     </p>
   </div>
+  <div class="word-modal" id="aboutModal">
+  <div class="word-box" style="max-width:380px;">
+    <div style="font-family:'Playfair Display',serif;font-size:24px;font-weight:900;color:var(--gold-light);text-align:center;margin-bottom:20px;letter-spacing:2px;">ℹ️ HAKKINDA</div>
+    
+    <div class="wb-section">
+      <h3>🎯 Oyunun Amacı</h3>
+      <p style="color:rgba(245,230,200,.75);font-size:14px;line-height:1.8;">Eğlenceli ve eğitici bir şekilde İngilizce öğrenme ve geliştirme.</p>
+    </div>
+
+    <div class="wb-section">
+      <h3>💡 Kimin Fikri?</h3>
+      <p style="color:var(--gold);font-family:'Playfair Display',serif;font-size:16px;">Cemil Kipel</p>
+    </div>
+
+    <div class="wb-section">
+      <h3>👨‍💻 Kim Yaptı?</h3>
+      <p style="color:var(--gold);font-family:'Playfair Display',serif;font-size:16px;">Developer: Kerem Erdoğan</p>
+    </div>
+
+    <button class="btn btn-outline" onclick="closeAbout()" style="margin-top:8px;">✕ Kapat</button>
+  </div>
+</div>
 </div>
 
 <!-- Toast -->
@@ -3080,18 +3114,22 @@ function renderMyTiles() {
 
         // Drag from tile
         el.draggable = true;
-        el.addEventListener('dragstart', (function(si, tid) {
-          return function(e) {
-            dragSrcSlot = si;
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', String(si));
-            setTimeout(function(){ el.style.opacity='0.3'; }, 0);
-          };
-        })(slotIdx, tile.id));
-        el.addEventListener('dragend', function() {
-          el.style.opacity='';
-          document.querySelectorAll('.rack-slot.drag-over').forEach(function(s){ s.classList.remove('drag-over'); });
-        });
+       el.addEventListener('dragstart', (function(si, tid) {
+  return function(e) {
+    dragSrcSlot = si;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(si));
+    setTimeout(function(){ el.style.opacity='0.3'; }, 0);
+    if(isMyTurn() && humanDrawn) {
+      document.getElementById('discardDrop').classList.add('visible');
+    }
+  };
+})(slotIdx, tile.id));
+el.addEventListener('dragend', function() {
+  el.style.opacity='';
+  document.getElementById('discardDrop').classList.remove('visible','over');
+  document.querySelectorAll('.rack-slot.drag-over').forEach(function(s){ s.classList.remove('drag-over'); });
+});
         el.addEventListener('click', function(e){ e._wasDrag = (dragSrcSlot !== null); });
 
         slotEl.appendChild(el);
@@ -3292,7 +3330,8 @@ async function playSentence() {
   await roomRef.child('gameState').set(newState);
 }
 
-async function discardSelected() {
+async function discardSelected() 
+  document.getElementById('discardDrop').classList.remove('visible','over');
   if(!isMyTurn() || !humanDrawn || !db) return;
   if(selectedTileIdx===null){ showToast('Önce bir taş seç!',2000); return; }
 
@@ -3643,7 +3682,8 @@ function saveLibData() {
   localStorage.setItem('wordFavs', JSON.stringify(wordFavs));
   localStorage.setItem('wordStats', JSON.stringify(wordStats));
 }
-
+function showAbout() { document.getElementById('aboutModal').classList.add('active'); }
+function closeAbout() { document.getElementById('aboutModal').classList.remove('active'); }
 function showTutorial() {
   showScreen('tutorialScreen');
 }
@@ -3909,7 +3949,29 @@ function initTouchDrag() {
   }, {passive: true});
 }
 
-
+document.getElementById('discardDrop').addEventListener('dragover', function(e){
+  e.preventDefault();
+  this.classList.add('over');
+});
+document.getElementById('discardDrop').addEventListener('dragleave', function(){
+  this.classList.remove('over');
+});
+document.getElementById('discardDrop').addEventListener('drop', function(e){
+  e.preventDefault();
+  this.classList.remove('visible','over');
+  this.classList.add('pop');
+  var el = this;
+  setTimeout(function(){ el.classList.remove('pop'); }, 400);
+  if(dragSrcSlot===null) return;
+  var tileId = rackSlots[dragSrcSlot];
+  if(!tileId) return;
+  var hand = getMyHand();
+  var idx = hand.findIndex(function(t){ return t.id===tileId; });
+  if(idx===-1) return;
+  selectedTileIdx = idx;
+  dragSrcSlot = null;
+  discardSelected();
+});
 // Init touch drag on load
 window.addEventListener('load', initTouchDrag);
 </script>
